@@ -19,7 +19,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-        working-directory: app
 
       - name: Create .env file
         run: |
@@ -28,16 +27,14 @@ jobs:
           echo "VITE_PROXY_PATH=${{ secrets.VITE_PROXY_PATH }}" >> .env
           echo "VITE_PROXY_TARGET_URL=${{ secrets.VITE_PROXY_TARGET_URL }}" >> .env
           cat .env
-        working-directory: app
 
       - name: Build static assets
         run: npm run build:static
-        working-directory: app
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./app/dist-static
+          publish_dir: ./dist-static
           publish_branch: gh-pages
           force_orphan: true
