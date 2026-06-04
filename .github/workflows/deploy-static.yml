@@ -20,6 +20,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Create .env file
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
+          echo "VITE_APP_TITLE=${{ secrets.VITE_APP_TITLE }}" >> .env
+          echo "VITE_PROXY_PATH=${{ secrets.VITE_PROXY_PATH }}" >> .env
+          echo "VITE_PROXY_TARGET_URL=${{ secrets.VITE_PROXY_TARGET_URL }}" >> .env
+
       - name: Build static assets
         run: npm run build:static
 

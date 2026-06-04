@@ -5,7 +5,7 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 import fs from "node:fs";
 import path from "node:path";
 
-const env = loadEnv("", process.cwd(), "");
+const env = loadEnv("", process.cwd(), "VITE");
 
 function existsSync(relativePath: string): boolean {
   return fs.existsSync(path.resolve(process.cwd(), relativePath));
@@ -28,7 +28,7 @@ if (existsSync("../docs")) {
 }
 
 export default defineConfig({
-  base: "/app/",
+  base: "/",
   plugins: [
     tanstackRouter({
       target: "react",
