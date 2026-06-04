@@ -17,8 +17,12 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Change to finanalyzer-app directory
+        run: cd finanalyzer-app
+
       - name: Install dependencies
         run: npm install
+        working-directory: finanalyzer-app
 
       - name: Create .env file
         run: |
@@ -26,14 +30,22 @@ jobs:
           echo "VITE_APP_TITLE=${{ secrets.VITE_APP_TITLE }}" >> .env
           echo "VITE_PROXY_PATH=${{ secrets.VITE_PROXY_PATH }}" >> .env
           echo "VITE_PROXY_TARGET_URL=${{ secrets.VITE_PROXY_TARGET_URL }}" >> .env
+          cat .env
+        working-directory: finanalyzer-app
+
+      - name: Debug - Check environment variables
+        run: |
+          echo "VITE_API_BASE_URL from env: $VITE_API_BASE_URL"
+        working-directory: finanalyzer-app
 
       - name: Build static assets
         run: npm run build:static
+        working-directory: finanalyzer-app
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist-static
+          publish_dir: ./finanalyzer-app/dist-static
           publish_branch: gh-pages
           force_orphan: true
