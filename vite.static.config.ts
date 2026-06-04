@@ -28,7 +28,7 @@ if (existsSync("../docs")) {
 }
 
 export default defineConfig({
-  base: "/",
+  base: env.VITE_APP_BASE || "/",
   plugins: [
     tanstackRouter({
       target: "react",
