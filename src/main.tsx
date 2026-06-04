@@ -1,5 +1,6 @@
 import { DesignSystemProvider, Icon } from "@openbb/ui";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { createHashHistory } from "@tanstack/history";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -22,8 +23,14 @@ Icon.defaultUrl = "/spritemap.svg";
 
 console.log("=== ROUTE TREE:", routeTree);
 
-// Create a new router instance
-const router = createRouter({ routeTree });
+// Create hash-based history for static deployment
+const hashHistory = createHashHistory();
+
+// Create a new router instance with hash-based routing
+const router = createRouter({ 
+  routeTree,
+  history: hashHistory,
+});
 
 console.log("=== ROUTER CREATED ===");
 
