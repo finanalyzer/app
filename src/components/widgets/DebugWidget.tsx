@@ -340,7 +340,7 @@ function DebugWidget({
     const resolved: Record<string, unknown> = {};
     const processedParams: ProcessedParameter[] = [];
 
-    (def.params || []).forEach((p) => {
+    ((def.params || (def.data as Record<string, unknown>)?.params) || []).forEach((p) => {
       const paramName = getParamName(p);
       const pRec = p as unknown as ParamRecord;
       const val = pRec.value !== undefined ? pRec.value : p.default;
@@ -377,7 +377,7 @@ function DebugWidget({
       // Create processed params with correct names
       const processedParams: ProcessedParameter[] = [];
 
-      (widgetDef.params || []).forEach((p) => {
+      ((widgetDef.params || (widgetDef.data as Record<string, unknown>)?.params) || []).forEach((p) => {
         const paramName = getParamName(p);
         // Create a copy of the parameter with the correct name
         processedParams.push({
@@ -664,12 +664,18 @@ function DebugWidget({
   useEffect(() => {
     if (widgetDef && activeTab === "parameters") {
       // Update the URL without reloading the page
-      // We'll use the URL hash to store the widget ID and parameters
+      // For hash-based routing, append query params to the existing route hash
       const urlParams = new URLSearchParams();
       urlParams.set("widgetId", getWidgetId(widgetDef));
       urlParams.set("params", JSON.stringify(resolvedParams));
 
-      const newUrl = `${window.location.pathname}${window.location.search}#${urlParams.toString()}`;
+      // Get current hash route (e.g., "/app" from "#/app")
+      const currentHash = window.location.hash;
+      const routeMatch = currentHash.match(/^#(\/.*?)(?:\?|$)/);
+      const currentRoute = routeMatch ? routeMatch[1] : "/";
+
+      // Append query params to existing route hash
+      const newUrl = `${window.location.pathname}#${currentRoute}?${urlParams.toString()}`;
       window.history.replaceState(
         { params: resolvedParams, widgetId: getWidgetId(widgetDef) },
         "",
@@ -895,7 +901,7 @@ function DebugWidget({
                           {t("debugWidget.params")}:
                         </span>
                         <span className="text-blue-900 dark:text-blue-200 ml-2 font-mono">
-                          {(widgetDef.params || []).length}
+                          {((widgetDef.params || (widgetDef.data as Record<string, unknown>)?.params) || []).length}
                         </span>
                       </div>
                     </div>
@@ -927,7 +933,7 @@ function DebugWidget({
                       {t("debugWidget.inputParameters")}
                     </Label>
                     <div className="space-y-3 mb-4">
-                      {(widgetDef.params || []).map((p, i) => {
+                      {((widgetDef.params || (widgetDef.data as Record<string, unknown>)?.params) || []).map((p, i) => {
                         const pRec = p as unknown as ParamRecord;
                         const paramName = getParamName(p);
                         const paramType = p.type;
