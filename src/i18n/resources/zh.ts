@@ -231,7 +231,7 @@ export default {
       english: "English",
       chinese: "中文",
     },
-    version: "v1.13.16", // Replace with the actual version number
+    version: "v1.14.0", // Replace with the actual version number
   },
   mobileNav: {
     menu: "菜单",
@@ -450,6 +450,15 @@ export default {
     statusLoaded: "已加载",
     statusUnloaded: "未加载",
     statusError: "错误",
+  },
+  tableSettings: {
+    title: "表格设置",
+    decimalPlaces: "小数位数",
+    decimalPlacesDescription: "数值显示的小数位数",
+    visibleColumns: "可见列",
+    selectAll: "全选",
+    deselectAll: "取消全选",
+    visibleColumnsDescription: "至少保留一列可见",
   },
   debugWidget: {
     definitionEditor: "定义编辑器",

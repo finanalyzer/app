@@ -233,7 +233,7 @@ export default {
       english: "English",
       chinese: "中文",
     },
-    version: "v1.13.16", // Replace with the actual version number
+    version: "v1.14.0", // Replace with the actual version number
   },
   mobileNav: {
     menu: "Menu",
@@ -453,6 +453,15 @@ export default {
     statusLoaded: "Loaded",
     statusUnloaded: "Unloaded",
     statusError: "Error",
+  },
+  tableSettings: {
+    title: "Table Settings",
+    decimalPlaces: "Decimal Places",
+    decimalPlacesDescription: "Number of decimal places to display for numeric values",
+    visibleColumns: "Visible Columns",
+    selectAll: "Select All",
+    deselectAll: "Deselect All",
+    visibleColumnsDescription: "At least one column must be visible",
   },
   debugWidget: {
     definitionEditor: "Definition Editor",

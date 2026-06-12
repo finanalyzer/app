@@ -6,5 +6,6 @@ export { HtmlWidget } from "./shared/HtmlWidget";
 export { MarkdownWidget } from "./shared/MarkdownWidget";
 export { MetricWidget } from "./shared/MetricWidget";
 export { TableWidget } from "./shared/TableWidget";
+export { default as TableSettingsModal } from "./TableSettingsModal";
 export { NavigationBarWidget } from "./NavigationBarWidget";
 export { NavigationBar } from "./NavigationBar";

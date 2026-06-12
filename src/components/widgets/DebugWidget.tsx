@@ -395,6 +395,7 @@ function DebugWidget({
     if (!widgetDef) return "";
 
     const endpoint = widgetDef.endpoint;
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
     
     // Check if endpoint is a full URL (starts with http:// or https://)
     const isFullUrl = endpoint.startsWith('http://') || endpoint.startsWith('https://');
@@ -405,19 +406,27 @@ function DebugWidget({
       // If endpoint is a full URL, use it directly without connectionUrl
       url = endpoint;
     } else {
-      const connectionUrl = widgetDef.connectionUrl || "";
-      
-      // Normalize connectionUrl: remove trailing slash
-      const normalizedBaseUrl = connectionUrl.endsWith('/')
-        ? connectionUrl.slice(0, -1)
-        : connectionUrl;
-      
-      // Ensure endpoint starts with /
-      const normalizedEndpoint = endpoint.startsWith('/')
-        ? endpoint
-        : `/${endpoint}`;
-      
-      url = `${normalizedBaseUrl}${normalizedEndpoint}`;
+      // For proxy endpoint, use API_BASE_URL
+      if (endpoint.startsWith('/v1/proxy')) {
+        const normalizedBaseUrl = API_BASE_URL.endsWith('/')
+          ? API_BASE_URL.slice(0, -1)
+          : API_BASE_URL;
+        url = `${normalizedBaseUrl}${endpoint}`;
+      } else {
+        const connectionUrl = widgetDef.connectionUrl || "";
+        
+        // Normalize connectionUrl: remove trailing slash
+        const normalizedBaseUrl = connectionUrl.endsWith('/')
+          ? connectionUrl.slice(0, -1)
+          : connectionUrl;
+        
+        // Ensure endpoint starts with /
+        const normalizedEndpoint = endpoint.startsWith('/')
+          ? endpoint
+          : `/${endpoint}`;
+        
+        url = `${normalizedBaseUrl}${normalizedEndpoint}`;
+      }
     }
 
     const queryParams = new URLSearchParams();

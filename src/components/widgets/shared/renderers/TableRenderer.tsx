@@ -4,6 +4,7 @@ import { ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-communi
 import type { ColDef, GridReadyEvent, ValueFormatterParams, ICellRendererParams } from 'ag-grid-community';
 import type { WidgetInstance } from '../../../../types/widgets';
 import type { CellOnClickRenderParams } from '../../../../types/widgets';
+import type { TableSettings } from '../../TableSettingsModal';
 import './AgGridTheme.css';
 
 // Register all community modules
@@ -88,6 +89,99 @@ function percentFormatter(params: ValueFormatterParams): string {
   if (isNaN(numValue)) return String(value);
   return `${numValue.toFixed(2)}%`;
 }
+
+function dateStringFormatter(params: ValueFormatterParams): string {
+  const value = params.value;
+  if (value === null || value === undefined || value === '') return '';
+  
+  const dateStr = String(value);
+  
+  // Try to parse the date string with different formats
+  let date: Date;
+  
+  // Check if it's a Unix timestamp (seconds or milliseconds)
+  const numValue = Number(dateStr);
+  if (!isNaN(numValue) && numValue > 0) {
+    // If the number is very large, it's likely milliseconds
+    // If the number is reasonable, it's likely seconds
+    if (numValue > 1e12) {
+      date = new Date(numValue);
+    } else {
+      date = new Date(numValue * 1000);
+    }
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  }
+  
+  // Format 1: YYYY-MM-DD (HTML date input format)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    date = new Date(dateStr + 'T00:00:00');
+  }
+  // Format 2: YYYY/MM/DD
+  else if (/^\d{4}\/\d{2}\/\d{2}$/.test(dateStr)) {
+    const parts = dateStr.split('/');
+    date = new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00`);
+  }
+  // Format 3: MM/DD/YYYY
+  else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+    const parts = dateStr.split('/');
+    date = new Date(`${parts[2]}-${parts[0]}-${parts[1]}T00:00:00`);
+  }
+  // Format 4: DD/MM/YYYY
+  else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+    const parts = dateStr.split('/');
+    date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+  }
+  // Format 5: ISO string (YYYY-MM-DDTHH:mm:ss.sssZ)
+  else if (/^\d{4}-\d{2}-\d{2}T/.test(dateStr)) {
+    date = new Date(dateStr);
+  }
+  // Format 6: Date with time (YYYY-MM-DD HH:mm:ss)
+  else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$/.test(dateStr)) {
+    date = new Date(dateStr.replace(' ', 'T'));
+  }
+  // Format 7: Chinese date format (YYYY年MM月DD日)
+  else if (/^\d{4}年\d{1,2}月\d{1,2}日$/.test(dateStr)) {
+    const match = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if (match) {
+      date = new Date(`${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}T00:00:00`);
+    } else {
+      return dateStr;
+    }
+  }
+  // Default: try to parse as-is
+  else {
+    date = new Date(dateStr);
+  }
+  
+  // Check if the date is valid
+  if (isNaN(date.getTime())) {
+    return dateStr;
+  }
+  
+  // Format the date as YYYY-MM-DD
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+
+export function createNumberFormatter(decimalPlaces: number): (params: ValueFormatterParams) => string {
+  return (params: ValueFormatterParams): string => {
+    const value = params.value;
+    if (value === null || value === undefined) return '';
+    const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+    if (isNaN(numValue)) return String(value);
+    return numValue.toFixed(decimalPlaces);
+  };
+}
+
+
 
 function columnColorRenderer(params: ICellRendererParams): JSX.Element {
   const value = params.value;
@@ -210,10 +304,19 @@ function createColumnDefsFromConfig(columnsDefs: ColumnDef[], availableColumns: 
       flex: colDef.flex || 1,
       minWidth: colDef.minWidth || colDef.width || 100,
       width: colDef.width || undefined,
+      cellDataType: colDef.cellDataType,
     };
 
     if (colDef.formatterFn === 'percent') {
       column.valueFormatter = percentFormatter;
+    }
+    
+    if (colDef.cellDataType === 'dateString') {
+      column.valueFormatter = dateStringFormatter;
+    }
+    
+    if (isNumericColumn(colDef.field)) {
+      column.cellStyle = { textAlign: 'right' };
     }
 
     if (colDef.renderFn === 'columnColor') {
@@ -232,28 +335,65 @@ function createColumnDefsFromConfig(columnsDefs: ColumnDef[], availableColumns: 
   );
 }
 
+function isNumericColumn(col: string): boolean {
+  const numericSuffixes = ['_pct', '_percent', '_change', '_return', '_yield'];
+  const numericKeywords = ['price', 'close', 'open', 'high', 'low', 'volume', 'amount', 'value', 'rate', 'ratio', 'yield', 'return', 'change', 'percent', 'pct', 'eps', 'pe', 'pb', 'roe', 'roa'];
+  
+  const lowerCol = col.toLowerCase();
+  
+  if (numericSuffixes.some(suffix => lowerCol.endsWith(suffix))) {
+    return true;
+  }
+  
+  if (numericKeywords.some(keyword => lowerCol.includes(keyword))) {
+    return true;
+  }
+  
+  return false;
+}
+
 function createColumnDefs(columns: string[]): ColDef[] {
-  return columns.map((col) => ({
-    field: col,
-    headerName: col.charAt(0).toUpperCase() + col.slice(1),
-    filter: true,
-    sortable: true,
-    resizable: true,
-    flex: 1,
-    minWidth: 100,
-  }));
+  return columns.map((col) => {
+    const column: ColDef = {
+      field: col,
+      headerName: col.charAt(0).toUpperCase() + col.slice(1),
+      filter: true,
+      sortable: true,
+      resizable: true,
+      flex: 1,
+      minWidth: 100,
+    };
+    
+    if (isNumericColumn(col)) {
+      column.cellStyle = { textAlign: 'right' };
+    }
+    
+    return column;
+  });
 }
 
 interface TableRendererProps {
   data: unknown;
   widget?: WidgetInstance;
   onUpdate?: (params: Record<string, unknown>) => void;
+  settings?: TableSettings;
 }
 
-export function TableRenderer({ data, widget, onUpdate }: TableRendererProps): JSX.Element {
+export function TableRenderer({ data, widget, onUpdate, settings }: TableRendererProps): JSX.Element {
   const tableData = useMemo(() => transformToTableData(data), [data]);
 
+  const { decimalPlaces = 2, visibleColumns } = settings || {};
+
+  const effectiveColumns = useMemo(() => {
+    if (visibleColumns && visibleColumns.length > 0) {
+      return visibleColumns.filter(col => tableData.columns.includes(col));
+    }
+    return tableData.columns;
+  }, [tableData.columns, visibleColumns]);
+
   const columnDefs = useMemo(() => {
+    let baseDefs: ColDef[] | undefined;
+    
     if (widget) {
       const widgetAny = widget as unknown as Record<string, unknown>;
       
@@ -262,14 +402,14 @@ export function TableRenderer({ data, widget, onUpdate }: TableRendererProps): J
       if (tableConfig && (tableConfig as Record<string, unknown>).columnsDefs) {
         const columnsDefs = (tableConfig as Record<string, unknown>).columnsDefs as ColumnDef[];
         if (columnsDefs && Array.isArray(columnsDefs) && columnsDefs.length > 0) {
-          return createColumnDefsFromConfig(columnsDefs, tableData.columns);
+          baseDefs = createColumnDefsFromConfig(columnsDefs, effectiveColumns);
         }
       }
       
       // Check path 2: widget.data is WidgetConfig with data.data.table.columnsDefs
       // (when widget.data = widgetConfig from widgets.json via handleAddWidgetsFromMenu)
       const widgetData = widgetAny.data as Record<string, unknown> | undefined;
-      if (widgetData) {
+      if (!baseDefs && widgetData) {
         // widgetData might be the WidgetConfig itself (has id, name, data, etc.)
         const tableDataObj = widgetData.data as Record<string, unknown> | undefined;
         if (tableDataObj) {
@@ -277,22 +417,43 @@ export function TableRenderer({ data, widget, onUpdate }: TableRendererProps): J
           if (table) {
             const columnsDefs = table.columnsDefs as ColumnDef[] | undefined;
             if (columnsDefs && Array.isArray(columnsDefs) && columnsDefs.length > 0) {
-              return createColumnDefsFromConfig(columnsDefs, tableData.columns);
+              baseDefs = createColumnDefsFromConfig(columnsDefs, effectiveColumns);
             }
           }
         }
         
         // Or widgetData might be directly the table config (has columnsDefs directly)
-        if ((widgetData as Record<string, unknown>).columnsDefs) {
+        if (!baseDefs && (widgetData as Record<string, unknown>).columnsDefs) {
           const columnsDefs = (widgetData as Record<string, unknown>).columnsDefs as ColumnDef[];
           if (columnsDefs && Array.isArray(columnsDefs) && columnsDefs.length > 0) {
-            return createColumnDefsFromConfig(columnsDefs, tableData.columns);
+            baseDefs = createColumnDefsFromConfig(columnsDefs, effectiveColumns);
           }
         }
       }
     }
-    return createColumnDefs(tableData.columns);
-  }, [tableData.columns, widget]);
+    
+    if (!baseDefs) {
+      baseDefs = createColumnDefs(effectiveColumns);
+    }
+    
+    // Apply decimalPlaces formatting
+    if (decimalPlaces >= 0) {
+      const numberFormatter = createNumberFormatter(decimalPlaces);
+      return baseDefs.map(col => {
+        const colRecord = col as Record<string, unknown>;
+        // Skip formatting for percent, dateString, and other special cellDataTypes
+        if (colRecord.formatterFn !== 'percent' && colRecord.cellDataType !== 'dateString') {
+          return {
+            ...col,
+            valueFormatter: numberFormatter,
+          };
+        }
+        return col;
+      });
+    }
+    
+    return baseDefs;
+  }, [effectiveColumns, widget, decimalPlaces]);
 
   const onGridReady = useCallback((params: GridReadyEvent) => {
     params.api.sizeColumnsToFit();
