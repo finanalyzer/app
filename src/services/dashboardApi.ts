@@ -70,6 +70,7 @@ export interface Dashboard {
   widgets: Widget[];
   created_at?: string;
   updated_at?: string;
+  tabs?: Array<{ id: string; name: string; icon?: string }>;
 }
 
 export interface DashboardCreate {
@@ -77,12 +78,14 @@ export interface DashboardCreate {
   name: string;
   description?: string;
   widgets?: Widget[];
+  tabs?: Array<{ id: string; name: string; icon?: string }>;
 }
 
 export interface DashboardUpdate {
   name?: string;
   description?: string;
   widgets?: Widget[];
+  tabs?: Array<{ id: string; name: string; icon?: string }>;
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {

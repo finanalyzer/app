@@ -6,8 +6,12 @@ import type {
   AgentEvent,
   ReasoningStep,
   MessageChunk,
+  ToolCall,
+  QueryMessage,
 } from "../../types/ai";
 import { connectionService } from "../connections/connectionService";
+import { mcpClient } from "../mcp/mcpClient";
+import { mcpToolRegistry } from "../mcp/mcpToolRegistry";
 
 const AGENT_API_PATHS = {
   agentsJson: "/agents.json",
@@ -136,156 +140,268 @@ export async function terminateProcess(connection: AgentConnection): Promise<voi
   }
 }
 
+async function executeMcpTool(toolCall: ToolCall): Promise<{ success: boolean; result: unknown; error?: string }> {
+  try {
+    const { tool_name, arguments: args, server_name } = toolCall;
+    
+    let sessionId: string | undefined;
+    const allConnections = mcpClient.getConnections();
+    
+    if (server_name) {
+      const conn = allConnections.find((c) => c.serverUrl === server_name);
+      if (conn) {
+        const tools = mcpToolRegistry.getEnabledToolsByServer(conn.sessionId);
+        const tool = tools.find((t) => t.name === tool_name);
+        if (tool) {
+          sessionId = conn.sessionId;
+        }
+      }
+    }
+    
+    if (!sessionId) {
+      for (const conn of allConnections) {
+        const tools = mcpToolRegistry.getEnabledToolsByServer(conn.sessionId);
+        const tool = tools.find((t) => t.name === tool_name);
+        if (tool) {
+          sessionId = conn.sessionId;
+          break;
+        }
+      }
+    }
+    
+    if (!sessionId) {
+      return {
+        success: false,
+        result: null,
+        error: `Tool "${tool_name}" not found in any connected MCP server`,
+      };
+    }
+    
+    const result = await mcpClient.callTool(sessionId, tool_name, args || {});
+    
+    if (result.ok) {
+      return {
+        success: true,
+        result: result.data,
+      };
+    } else {
+      return {
+        success: false,
+        result: null,
+        error: result.error?.message || "Tool execution failed",
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      result: null,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
 export async function* sendQuery(
   connection: AgentConnection,
   request: QueryRequest,
 ): AsyncGenerator<AgentEvent, void, unknown> {
   const url = buildAgentUrl(connection.url, AGENT_API_PATHS.query, connection);
+  let currentRequest = { ...request };
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 300000);
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "text/event-stream",
-        ...getAuthHeaders(connection),
-      },
-      body: JSON.stringify(request),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error("No response body");
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = "";
-
     while (true) {
-      const { done, value } = await reader.read();
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+          ...getAuthHeaders(connection),
+        },
+        body: JSON.stringify(currentRequest),
+        signal: controller.signal,
+      });
 
-      if (done) {
-        break;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
 
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let hasToolCall = false;
+      let pendingToolCall: ToolCall | null = null;
 
-          if (!data || data === "[DONE]") {
-            continue;
-          }
+      while (true) {
+        const { done, value } = await reader.read();
 
-          try {
-            const parsed = JSON.parse(data);
-            console.debug("Agent response parsed:", parsed);
+        if (done) {
+          break;
+        }
 
-            if (parsed.event_type && parsed.message !== undefined) {
-              const reasoningStep: ReasoningStep = {
-                event_type: parsed.event_type,
-                message: parsed.message,
-                details: parsed.details,
-              };
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-              yield {
-                type: "reasoning_step",
-                data: reasoningStep,
-              };
-            } else if (parsed.eventType && parsed.message !== undefined) {
-              console.debug("Found eventType format for reasoning");
-              const reasoningStep: ReasoningStep = {
-                event_type: parsed.eventType,
-                message: parsed.message,
-                details: parsed.details,
-              };
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6).trim();
 
-              yield {
-                type: "reasoning_step",
-                data: reasoningStep,
-              };
-            } else if (parsed.content !== undefined) {
-              const messageChunk: MessageChunk = {
-                content: parsed.content,
-              };
-
-              yield {
-                type: "message_chunk",
-                data: messageChunk,
-              };
-            } else if (parsed.delta !== undefined) {
-              console.debug("Found delta field, treating as message content");
-              const messageChunk: MessageChunk = {
-                content: typeof parsed.delta === "string" ? parsed.delta : JSON.stringify(parsed.delta),
-              };
-
-              yield {
-                type: "message_chunk",
-                data: messageChunk,
-              };
-            } else if (parsed.type === "reasoning_step") {
-              yield parsed as AgentEvent;
-            } else if (parsed.type === "message_chunk") {
-              yield parsed as AgentEvent;
-            } else if (parsed.response !== undefined) {
-              console.debug("Found response field, treating as message content");
-              const messageChunk: MessageChunk = {
-                content: typeof parsed.response === "string" ? parsed.response : JSON.stringify(parsed.response),
-              };
-
-              yield {
-                type: "message_chunk",
-                data: messageChunk,
-              };
-            } else if (parsed.text !== undefined) {
-              console.debug("Found text field, treating as message content");
-              const messageChunk: MessageChunk = {
-                content: parsed.text,
-              };
-
-              yield {
-                type: "message_chunk",
-                data: messageChunk,
-              };
-            } else {
-              console.warn("Unknown response format from agent:", parsed);
-              const messageChunk: MessageChunk = {
-                content: typeof parsed === "string" ? parsed : JSON.stringify(parsed),
-              };
-
-              yield {
-                type: "message_chunk",
-                data: messageChunk,
-              };
+            if (!data || data === "[DONE]") {
+              continue;
             }
-          } catch (e) {
-            console.debug("Failed to parse JSON, treating as plain text:", data);
-            if (data) {
-              const messageChunk: MessageChunk = {
-                content: data,
-              };
 
-              yield {
-                type: "message_chunk",
-                data: messageChunk,
-              };
+            try {
+              const parsed = JSON.parse(data);
+              console.debug("Agent response parsed:", parsed);
+
+              if (parsed.tool_name || parsed.toolcall || parsed.type === "tool_call") {
+                hasToolCall = true;
+                const toolCall: ToolCall = {
+                  tool_name: parsed.tool_name || parsed.toolcall?.tool_name || parsed.data?.tool_name || "unknown",
+                  arguments: parsed.arguments || parsed.toolcall?.arguments || parsed.data?.arguments || {},
+                  server_name: parsed.server_name || parsed.toolcall?.server_name || parsed.data?.server_name,
+                };
+                pendingToolCall = toolCall;
+                console.debug("Received tool call:", toolCall);
+
+                yield {
+                  type: "tool_call",
+                  data: toolCall,
+                };
+              } else if (parsed.event_type && parsed.message !== undefined) {
+                const reasoningStep: ReasoningStep = {
+                  event_type: parsed.event_type,
+                  message: parsed.message,
+                  details: parsed.details,
+                };
+
+                yield {
+                  type: "reasoning_step",
+                  data: reasoningStep,
+                };
+              } else if (parsed.eventType && parsed.message !== undefined) {
+                console.debug("Found eventType format for reasoning");
+                const reasoningStep: ReasoningStep = {
+                  event_type: parsed.eventType,
+                  message: parsed.message,
+                  details: parsed.details,
+                };
+
+                yield {
+                  type: "reasoning_step",
+                  data: reasoningStep,
+                };
+              } else if (parsed.content !== undefined) {
+                const messageChunk: MessageChunk = {
+                  content: parsed.content,
+                };
+
+                yield {
+                  type: "message_chunk",
+                  data: messageChunk,
+                };
+              } else if (parsed.delta !== undefined) {
+                console.debug("Found delta field, treating as message content");
+                const messageChunk: MessageChunk = {
+                  content: typeof parsed.delta === "string" ? parsed.delta : JSON.stringify(parsed.delta),
+                };
+
+                yield {
+                  type: "message_chunk",
+                  data: messageChunk,
+                };
+              } else if (parsed.type === "reasoning_step") {
+                yield parsed as AgentEvent;
+              } else if (parsed.type === "message_chunk") {
+                yield parsed as AgentEvent;
+              } else if (parsed.response !== undefined) {
+                console.debug("Found response field, treating as message content");
+                const messageChunk: MessageChunk = {
+                  content: typeof parsed.response === "string" ? parsed.response : JSON.stringify(parsed.response),
+                };
+
+                yield {
+                  type: "message_chunk",
+                  data: messageChunk,
+                };
+              } else if (parsed.text !== undefined) {
+                console.debug("Found text field, treating as message content");
+                const messageChunk: MessageChunk = {
+                  content: parsed.text,
+                };
+
+                yield {
+                  type: "message_chunk",
+                  data: messageChunk,
+                };
+              } else {
+                console.warn("Unknown response format from agent:", parsed);
+                const messageChunk: MessageChunk = {
+                  content: typeof parsed === "string" ? parsed : JSON.stringify(parsed),
+                };
+
+                yield {
+                  type: "message_chunk",
+                  data: messageChunk,
+                };
+              }
+            } catch (e) {
+              console.debug("Failed to parse JSON, treating as plain text:", data);
+              if (data) {
+                const messageChunk: MessageChunk = {
+                  content: data,
+                };
+
+                yield {
+                  type: "message_chunk",
+                  data: messageChunk,
+                };
+              }
             }
           }
         }
+      }
+
+      if (hasToolCall && pendingToolCall) {
+        console.debug("Executing MCP tool:", pendingToolCall);
+        
+        const toolResult = await executeMcpTool(pendingToolCall);
+        
+        yield {
+          type: "tool_result",
+          data: {
+            tool_name: pendingToolCall.tool_name,
+            result: toolResult.result,
+            success: toolResult.success,
+            error: toolResult.error,
+          },
+        };
+
+        const toolResultMessage: QueryMessage = {
+          role: "tool",
+          content: JSON.stringify({
+            tool_name: pendingToolCall.tool_name,
+            result: toolResult.result,
+            success: toolResult.success,
+            error: toolResult.error,
+          }),
+          function: pendingToolCall.tool_name,
+          data: toolResult.result,
+        };
+
+        currentRequest = {
+          ...currentRequest,
+          messages: [...currentRequest.messages, toolResultMessage],
+        };
+      } else {
+        break;
       }
     }
   } catch (error) {

@@ -9,6 +9,7 @@ import {
   updateDashboard,
 } from "../../services/dashboardApi";
 import { setActiveDashboardId } from "../../services/dashboardSession";
+import { McpCompanionDialog } from "../settings/McpCompanionDialog";
 import { generateUUID } from "../../utils/uuid";
 import "./Sidebar.css";
 
@@ -62,6 +63,7 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
   const [libraryExpanded, setLibraryExpanded] = useState(true);
   const [dashboardsExpanded, setDashboardsExpanded] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [companionDialogOpen, setCompanionDialogOpen] = useState(false);
   const [dashboards, setDashboards] = useState<DashboardItem[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -207,6 +209,13 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
     setSettingsOpen(!settingsOpen);
   };
 
+  const handleCompanionClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSettingsOpen(false);
+    setCompanionDialogOpen(true);
+  };
+
   return (
     <div
       ref={sidebarRef}
@@ -245,6 +254,17 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
                   <Icon name={"settings" as never} />
                   <span>{t("sidebar.settings")}</span>
                 </Link>
+                <button
+                  type="button"
+                  className="settings-menu-item"
+                  onClick={handleCompanionClick}
+                  data-testid="mcp-companion"
+                >
+                  <svg id="mcp" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>{t("mcp.companion")}</span>
+                </button>
               </div>
             )}
           </div>
@@ -510,6 +530,11 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
       <div className="sidebar-footer">
         <div className="sidebar-version">{t("sidebar.version")}</div>
       </div>
+
+      <McpCompanionDialog
+        isOpen={companionDialogOpen}
+        onClose={() => setCompanionDialogOpen(false)}
+      />
     </div>
   );
 }

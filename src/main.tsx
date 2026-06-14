@@ -7,6 +7,9 @@ import { createRoot } from "react-dom/client";
 import { I18nextProvider } from 'react-i18next';
 import "./index.css";
 
+// Import widget factory to register built-in widget types
+import "./services/widgets/widgetFactory";
+
 // Initialize theme from localStorage
 const savedTheme = localStorage.getItem("theme") || "dark";
 document.documentElement.classList.toggle("dark", savedTheme === "dark");

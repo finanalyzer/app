@@ -124,6 +124,11 @@ export interface WidgetConfig {
   }>;
   // Widget data configuration (table columnsDefs, etc.)
   data?: unknown;
+  // MCP tool matching metadata
+  mcpToolMatch?: {
+    serverName: string;
+    toolName: string;
+  };
 }
 
 // Widget instance data

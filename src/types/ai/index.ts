@@ -44,9 +44,17 @@ export interface WidgetContext {
   secondary?: WidgetInfo[];
 }
 
+export interface McpToolInfo {
+  name: string;
+  description: string;
+  inputSchema?: Record<string, unknown>;
+  serverName: string;
+}
+
 export interface QueryRequest {
   messages: QueryMessage[];
   widgets?: WidgetContext;
+  mcpTools?: McpToolInfo[];
 }
 
 export interface ReasoningStep {
@@ -59,9 +67,22 @@ export interface MessageChunk {
   content: string;
 }
 
+export interface ToolCall {
+  tool_name: string;
+  arguments: Record<string, unknown>;
+  server_name?: string;
+}
+
+export interface ToolResultEvent {
+  tool_name: string;
+  result: unknown;
+  success: boolean;
+  error?: string;
+}
+
 export interface AgentEvent {
-  type: "reasoning_step" | "message_chunk";
-  data: ReasoningStep | MessageChunk;
+  type: "reasoning_step" | "message_chunk" | "tool_call" | "tool_result";
+  data: ReasoningStep | MessageChunk | ToolCall | ToolResultEvent;
 }
 
 export interface AgentConfig {

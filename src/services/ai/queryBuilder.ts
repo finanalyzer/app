@@ -4,13 +4,16 @@ import type {
   WidgetInfo,
   WidgetContext,
   Message,
+  McpToolInfo,
 } from "../../types/ai";
+import { mcpToolRegistry } from "../mcp/mcpToolRegistry";
 
 export function buildQueryRequest(
   userMessage: string,
   history: Message[],
   primaryWidgets?: WidgetInfo[],
   secondaryWidgets?: WidgetInfo[],
+  includeMcpTools: boolean = true,
 ): QueryRequest {
   const messages: QueryMessage[] = [];
 
@@ -38,10 +41,26 @@ export function buildQueryRequest(
     secondaryWidgets,
   );
 
+  const mcpTools: McpToolInfo[] | undefined = includeMcpTools
+    ? getEnabledMcpTools()
+    : undefined;
+
   return {
     messages,
     widgets,
+    mcpTools,
   };
+}
+
+export function getEnabledMcpTools(): McpToolInfo[] {
+  const enabledTools = mcpToolRegistry.getAllEnabledTools();
+  
+  return enabledTools.map((tool): McpToolInfo => ({
+    name: tool.name,
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+    serverName: tool.serverName,
+  }));
 }
 
 export function extractWidgetContext(
