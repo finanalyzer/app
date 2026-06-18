@@ -4,6 +4,7 @@ import { NoteWidget } from "../../components/widgets/shared/NoteWidget";
 import DebugWidget from "../../components/widgets/DebugWidget";
 import { TableWidget } from "../../components/widgets/shared/TableWidget";
 import { ChartWidget } from "../../components/widgets/shared/ChartWidget";
+import { MetricWidget } from "../../components/widgets/shared/MetricWidget";
 
 import type { WidgetConfig, WidgetTypeDefinition } from "../../types/widgets";
 import { BaseWidget } from "../../types/widgets";
@@ -355,10 +356,7 @@ WidgetFactory.registerWidgetType({
       default: "#3b82f6",
     },
   ],
-  renderer: () => {
-    // This would be a real component in a full implementation
-    return null;
-  },
+  renderer: MetricWidget,
 });
 
 // Register Markdown widget type

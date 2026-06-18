@@ -664,9 +664,13 @@ function DebugWidget({
         }
       }
 
-      // Convert single object to array for table display
-      if (processedData && typeof processedData === 'object' && !Array.isArray(processedData)) {
-        processedData = [processedData];
+      // For metric widget, keep original data format (single object or array of objects)
+      // MetricRenderer handles both single metric and multiple metrics correctly
+      if (widgetDef && widgetDef.type !== 'metric') {
+        // Convert single object to array for table display
+        if (processedData && typeof processedData === 'object' && !Array.isArray(processedData)) {
+          processedData = [processedData];
+        }
       }
 
       const responseObj = {
@@ -740,6 +744,12 @@ function DebugWidget({
       if (typeof dataToProcess === 'object' && dataToProcess !== null && 'content' in dataToProcess) {
         return dataToProcess;
       }
+    }
+
+    // For metric widget, keep original data format (single object or array of objects)
+    // MetricRenderer handles both single metric and multiple metrics correctly
+    if (widgetDef && widgetDef.type === 'metric') {
+      return dataToProcess;
     }
 
     // Convert single object to array for table display
