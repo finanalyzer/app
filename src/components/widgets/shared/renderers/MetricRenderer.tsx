@@ -1,48 +1,55 @@
-interface MetricData {
+interface MetricItem {
   value?: number | string;
   label?: string;
-  change?: number;
-  unit?: string;
+  delta?: number | string;
 }
 
 interface MetricRendererProps {
   data: unknown;
 }
 
-export function MetricRenderer({ data }: MetricRendererProps): JSX.Element {
-  const widgetData = (data || {}) as MetricData;
+function MetricItemRenderer({ item }: { item: MetricItem }): JSX.Element {
+  const value = item.value ?? 0;
+  const label = item.label ?? "Metric";
+  const delta = item.delta;
 
-  const metricData = {
-    value: widgetData.value ?? 0,
-    label: widgetData.label ?? "Metric",
-    change: widgetData.change,
-    unit: widgetData.unit ?? "",
-  };
-
-  const isPositive =
-    typeof metricData.change === "number" && metricData.change >= 0;
+  const deltaNum = typeof delta === "string" ? parseFloat(delta) : delta;
+  const isPositive = typeof deltaNum === "number" && !isNaN(deltaNum) && deltaNum >= 0;
 
   return (
     <div className="p-4 h-full flex flex-col justify-center">
       <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-        {metricData.value}
-        {metricData.unit && (
-          <span className="text-xl text-gray-500 dark:text-gray-400 ml-1">
-            {metricData.unit}
-          </span>
-        )}
+        {value}
       </div>
       <div className="text-sm text-gray-600 dark:text-gray-300 mb-2">
-        {metricData.label}
+        {label}
       </div>
-      {typeof metricData.change === "number" && (
+      {typeof deltaNum === "number" && !isNaN(deltaNum) && (
         <div
           className={`text-sm font-medium ${isPositive ? "text-green-500" : "text-red-500"}`}
         >
           <span className="mr-1">{isPositive ? "↑" : "↓"}</span>
-          {Math.abs(metricData.change)}%
+          {Math.abs(deltaNum)}%
         </div>
       )}
+    </div>
+  );
+}
+
+export function MetricRenderer({ data }: MetricRendererProps): JSX.Element {
+  const items = Array.isArray(data) ? data : [data];
+
+  const validItems = items.map((item) => (item || {}) as MetricItem);
+
+  if (validItems.length === 1) {
+    return <MetricItemRenderer item={validItems[0]} />;
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-4 p-4 h-full">
+      {validItems.map((item, index) => (
+        <MetricItemRenderer key={index} item={item} />
+      ))}
     </div>
   );
 }
