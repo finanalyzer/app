@@ -217,6 +217,23 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [customWidgets, setCustomWidgets] = useState<WidgetConfig[]>([]);
   const [groupConfigs, setGroupConfigs] = useState<Group[]>([]);
+  
+  // Monitor groupConfigs state changes
+  useEffect(() => {
+    if (groupConfigs.length > 0) {
+      console.log('[Parameter Grouping] Group configs state updated:', {
+        groupCount: groupConfigs.length,
+        groups: groupConfigs.map(g => ({
+          name: g.name,
+          type: g.type,
+          paramName: g.paramName,
+          widgetIds: g.widgetIds,
+          defaultValue: g.defaultValue
+        }))
+      });
+    }
+  }, [groupConfigs]);
+  
   const [tableSettings, setTableSettings] = useState<Record<string, TableSettings>>({});
   const [openTableSettingsWidgetId, setOpenTableSettingsWidgetId] = useState<string | null>(null);
   const [isManageTabsOpen, setIsManageTabsOpen] = useState(false);
@@ -253,6 +270,21 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
             const w = (dashboard.widgets || []).map(apiWidgetToWidget);
             setWidgets(w);
             setDashboardTabs(dashboard.tabs?.map(t => ({ id: t.id, name: t.name })) || []);
+            // Extract groups from dashboard metadata
+            if (dashboard.groups && Array.isArray(dashboard.groups)) {
+              console.log('[Parameter Grouping] Dashboard loaded with groups:', {
+                dashboardId: activeId,
+                groups: dashboard.groups,
+                groupCount: dashboard.groups.length,
+                widgets: w.map(w => ({ id: w.id, title: w.title }))
+              });
+              setGroupConfigs(dashboard.groups as Group[]);
+            } else {
+              console.log('[Parameter Grouping] Dashboard loaded without groups:', {
+                dashboardId: activeId,
+                widgetCount: w.length
+              });
+            }
             const rawLayout = w.map((widget) => ({
               i: widget.id,
               x: widget.position.x,
@@ -283,6 +315,15 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
             setActiveId(first.id);
             setActiveDashboardId(first.id);
             setDashboardTabs(first.tabs?.map(t => ({ id: t.id, name: t.name })) || []);
+            // Extract groups from dashboard metadata
+            if (first.groups && Array.isArray(first.groups)) {
+              console.log('[Parameter Grouping] First dashboard loaded with groups:', {
+                dashboardId: first.id,
+                groups: first.groups,
+                groupCount: first.groups.length
+              });
+              setGroupConfigs(first.groups as Group[]);
+            }
             const w = (first.widgets || []).map(apiWidgetToWidget);
             setWidgets(w);
             const rawLayout = w.map((widget) => ({
@@ -339,14 +380,6 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
     return () => document.removeEventListener("click", handleClickOutside);
   }, [openMenuWidgetId]);
 
-  useEffect(() => {
-    const widgetsWithGroups = widgets.filter(w => w.data?.groups && Array.isArray(w.data.groups));
-    if (widgetsWithGroups.length > 0) {
-      const groups = widgetsWithGroups[0].data.groups as Group[];
-      setGroupConfigs(groups);
-    }
-  }, [widgets]);
-
   async function fetchDashboard(id: string): Promise<ApiDashboard | null> {
     try {
       const dashboard = await getDashboard(id);
@@ -368,6 +401,13 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
     paramName: string,
     value: unknown
   ) => {
+    console.log('[Parameter Grouping] Parameter change initiated:', {
+      sourceWidgetId: widgetId,
+      paramName,
+      value,
+      timestamp: new Date().toISOString()
+    });
+
     setWidgetParameters(prev => {
       const newParams = { ...prev };
 
@@ -379,11 +419,25 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
             [paramName]: value
           }
         };
+        console.log('[Parameter Grouping] Updated source widget:', {
+          widgetId,
+          paramName,
+          value,
+          allValues: newParams[widgetId].values
+        });
       }
 
       const group = groupConfigs.find(g => g.paramName === paramName);
 
       if (group) {
+        console.log('[Parameter Grouping] Found matching group:', {
+          groupName: group.name,
+          groupType: group.type,
+          paramName: group.paramName,
+          targetWidgetIds: group.widgetIds,
+          defaultValue: group.defaultValue
+        });
+
         group.widgetIds.forEach((targetWidgetId: string) => {
           const matchingWidget = widgets.find(w =>
             w.id === targetWidgetId ||
@@ -400,8 +454,35 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
                   [paramName]: value
                 }
               };
+              console.log('[Parameter Grouping] Synced parameter to widget:', {
+                targetWidgetId: matchingWidget.id,
+                originalWidgetId: targetWidgetId,
+                paramName,
+                value,
+                allValues: newParams[matchingWidget.id].values
+              });
+            } else {
+              console.warn('[Parameter Grouping] Widget parameters not initialized:', {
+                widgetId: matchingWidget.id
+              });
             }
+          } else if (!matchingWidget) {
+            console.warn('[Parameter Grouping] Widget not found in current dashboard:', {
+              targetWidgetId
+            });
           }
+        });
+
+        console.log('[Parameter Grouping] Group sync completed:', {
+          groupName: group.name,
+          paramName,
+          syncedWidgetsCount: group.widgetIds.length - 1,
+          totalWidgetsInGroup: group.widgetIds.length
+        });
+      } else {
+        console.log('[Parameter Grouping] No group found for parameter:', {
+          paramName,
+          availableGroups: groupConfigs.map(g => ({ name: g.name, paramName: g.paramName }))
         });
       }
 
@@ -982,16 +1063,32 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
                               type={paramType as WidgetParameterType}
                               value={widgetParamData.values[paramName]}
                               onChange={(name, value) => {
-                                setWidgetParameters((prev) => ({
-                                  ...prev,
-                                  [widget.id]: {
-                                    ...prev[widget.id],
-                                    values: {
-                                      ...prev[widget.id].values,
-                                      [name]: value,
+                                // Check if this parameter belongs to a group
+                                const group = groupConfigs.find(g => 
+                                  g.paramName === paramName &&
+                                  g.widgetIds.some(widgetId =>
+                                    widget.id === widgetId ||
+                                    widget.id.startsWith(`${widgetId}-`) ||
+                                    (widget.data as Record<string, unknown>)?.widgetId === widgetId
+                                  )
+                                );
+
+                                if (group) {
+                                  // Use grouped parameter update to sync across all widgets in the group
+                                  updateWidgetParameterWithGrouping(widget.id, paramName, value);
+                                } else {
+                                  // Use normal parameter update for non-grouped parameters
+                                  setWidgetParameters((prev) => ({
+                                    ...prev,
+                                    [widget.id]: {
+                                      ...prev[widget.id],
+                                      values: {
+                                        ...prev[widget.id].values,
+                                        [name]: value,
+                                      },
                                     },
-                                  },
-                                }));
+                                  }));
+                                }
                               }}
                               options={paramOptions}
                               parameter={param as any}

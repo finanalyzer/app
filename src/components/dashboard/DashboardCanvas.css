@@ -15,6 +15,28 @@
   border-bottom-color: #303038;
 }
 
+/* Group Parameters Container */
+.group-parameters-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.dark .group-parameters-container {
+  background-color: #151518;
+  border-bottom-color: #303038;
+}
+
+.group-parameter-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .nav-bar-tabs {
   display: flex;
   align-items: center;

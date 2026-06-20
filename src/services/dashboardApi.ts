@@ -71,6 +71,13 @@ export interface Dashboard {
   created_at?: string;
   updated_at?: string;
   tabs?: Array<{ id: string; name: string; icon?: string }>;
+  groups?: Array<{
+    name: string;
+    type: string;
+    paramName: string;
+    defaultValue: string | number | boolean;
+    widgetIds: string[];
+  }>;
 }
 
 export interface DashboardCreate {
