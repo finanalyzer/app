@@ -86,6 +86,13 @@ export interface DashboardCreate {
   description?: string;
   widgets?: Widget[];
   tabs?: Array<{ id: string; name: string; icon?: string }>;
+  groups?: Array<{
+    name: string;
+    type: string;
+    paramName: string;
+    defaultValue: string | number | boolean;
+    widgetIds: string[];
+  }>;
 }
 
 export interface DashboardUpdate {
@@ -93,6 +100,13 @@ export interface DashboardUpdate {
   description?: string;
   widgets?: Widget[];
   tabs?: Array<{ id: string; name: string; icon?: string }>;
+  groups?: Array<{
+    name: string;
+    type: string;
+    paramName: string;
+    defaultValue: string | number | boolean;
+    widgetIds: string[];
+  }>;
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {

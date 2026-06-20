@@ -370,10 +370,20 @@ async function createDashboardFromApp(app: AppItem): Promise<string | null> {
     
     debugLog("info", `Creating new dashboard`, { dashboardId, appName: app.name });
     
+    // Include groups in dashboard creation if defined in app
+    const dashboardGroups = app.groups?.map((group: { name: string; type: string; paramName: string; defaultValue: string | number | boolean; widgetIds: string[] }) => ({
+      name: group.name,
+      type: group.type,
+      paramName: group.paramName,
+      defaultValue: group.defaultValue,
+      widgetIds: group.widgetIds,
+    }));
+    
     await createDashboard({
       id: dashboardId,
       name: app.name,
       description: app.description,
+      groups: dashboardGroups,
     });
 
     if (!app.tabs || typeof app.tabs !== "object") {

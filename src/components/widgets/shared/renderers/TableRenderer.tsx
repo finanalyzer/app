@@ -185,7 +185,8 @@ export function createNumberFormatter(decimalPlaces: number): (params: ValueForm
 
 function columnColorRenderer(params: ICellRendererParams): JSX.Element {
   const value = params.value;
-  const renderFnParams = (params.colDef as Record<string, unknown>).renderFnParams as Record<string, unknown>;
+  const colDefContext = (params.colDef as Record<string, unknown>).context as Record<string, unknown>;
+  const renderFnParams = colDefContext?.renderFnParams as Record<string, unknown>;
   const colorRules = renderFnParams?.colorRules as Array<Record<string, unknown>> || [];
 
   let color = '';
@@ -244,7 +245,8 @@ function columnColorRenderer(params: ICellRendererParams): JSX.Element {
 function cellOnClickRenderer(params: ICellRendererParams): JSX.Element {
   const value = params.value;
   const colDef = params.colDef as Record<string, unknown>;
-  const renderFnParams = colDef.renderFnParams as CellOnClickRenderParams | undefined;
+  const colDefContext = colDef.context as Record<string, unknown>;
+  const renderFnParams = colDefContext?.renderFnParams as CellOnClickRenderParams | undefined;
 
   const handleClick = () => {
     if (!renderFnParams || renderFnParams.actionType !== 'groupBy') {
@@ -321,12 +323,12 @@ function createColumnDefsFromConfig(columnsDefs: ColumnDef[], availableColumns: 
 
     if (colDef.renderFn === 'columnColor') {
       column.cellRenderer = columnColorRenderer;
-      (column as Record<string, unknown>).renderFnParams = colDef.renderFnParams;
+      column.context = { renderFnParams: colDef.renderFnParams };
     }
 
     if (colDef.renderFn === 'cellOnClick') {
       column.cellRenderer = cellOnClickRenderer;
-      (column as Record<string, unknown>).renderFnParams = colDef.renderFnParams;
+      column.context = { renderFnParams: colDef.renderFnParams };
     }
 
     return column;
