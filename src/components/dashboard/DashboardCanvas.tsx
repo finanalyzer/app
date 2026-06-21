@@ -1055,6 +1055,15 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
                             paramType = "dropdown";
                           }
 
+                          const group = groupConfigs.find(g => 
+                              g.paramName === paramName &&
+                              g.widgetIds.some(widgetId =>
+                                widget.id === widgetId ||
+                                widget.id.startsWith(`${widgetId}-`) ||
+                                (widget.data as Record<string, unknown>)?.widgetId === widgetId
+                              )
+                            );
+
                           return (
                             <ParameterInput
                               key={`${paramName}-${index}`}
@@ -1063,21 +1072,9 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
                               type={paramType as WidgetParameterType}
                               value={widgetParamData.values[paramName]}
                               onChange={(name, value) => {
-                                // Check if this parameter belongs to a group
-                                const group = groupConfigs.find(g => 
-                                  g.paramName === paramName &&
-                                  g.widgetIds.some(widgetId =>
-                                    widget.id === widgetId ||
-                                    widget.id.startsWith(`${widgetId}-`) ||
-                                    (widget.data as Record<string, unknown>)?.widgetId === widgetId
-                                  )
-                                );
-
                                 if (group) {
-                                  // Use grouped parameter update to sync across all widgets in the group
                                   updateWidgetParameterWithGrouping(widget.id, paramName, value);
                                 } else {
-                                  // Use normal parameter update for non-grouped parameters
                                   setWidgetParameters((prev) => ({
                                     ...prev,
                                     [widget.id]: {
@@ -1094,7 +1091,6 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
                               parameter={param as any}
                               onFormSubmit={() => handleRefreshWidget(widget.id)}
                               widgetId={(() => {
-                                // For debug widget, resolve widgetId from the loaded definition's data
                                 if (widget.type === "debug" && widget.data && typeof widget.data === 'object') {
                                   const debugData = widget.data as Record<string, unknown>;
                                   const widgetConfig = debugData.widgetConfig as Record<string, unknown> | undefined;
@@ -1105,7 +1101,6 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
                               })()}
                               instanceId={widget.id}
                               connectionUrl={(() => {
-                                // For debug widget, resolve connectionUrl from the loaded definition's data
                                 if (widget.type === "debug" && widget.data && typeof widget.data === 'object') {
                                   const debugData = widget.data as Record<string, unknown>;
                                   const widgetConfig = debugData.widgetConfig as Record<string, unknown> | undefined;
@@ -1119,6 +1114,7 @@ export function DashboardCanvas({ dashboardId: propId, activeTab: propActiveTab,
                                 }
                                 return def?.connectionUrl;
                               })()}
+                              groupInfo={group}
                             />
                           );
                         })}

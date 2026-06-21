@@ -1,29 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { WidgetParameter } from '../../../types/widgets';
+import type { WidgetParameter, Group } from '../../../types/widgets';
+import ParameterGroupingBadge from './ParameterGroupingBadge';
 
 interface DropdownParameterComponentProps {
   parameter: WidgetParameter;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  groupInfo?: Group;
 }
 
-/**
- * Dropdown parameter component for static-options parameters.
- *
- * Renders a custom dropdown with:
- * - Portal + fixed positioning (escapes overflow clipping)
- * - Search/filter when options count > 5
- * - Keyboard navigation (ArrowUp/Down, Enter, Escape)
- * - Multi-select support via parameter.multiSelect
- * - Dark mode styling consistent with OpenBB Workspace
- */
 const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
   parameter,
   value,
   onChange,
   disabled = false,
+  groupInfo,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [focusedOptionIndex, setFocusedOptionIndex] = useState(0);
@@ -42,7 +35,6 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
   const multiSelect = parameter.multiSelect ?? false;
   const popupWidth = parameter.style?.popupWidth;
 
-  // Build option list from parameter.options
   const options = useMemo(() => {
     return (parameter.options || []).map((opt) => ({
       value: String(opt.value),
@@ -50,7 +42,6 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
     }));
   }, [parameter.options]);
 
-  // Initialize selected values from comma-separated value string (multi-select)
   useEffect(() => {
     if (multiSelect && value) {
       setSelectedValues(
@@ -64,7 +55,6 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
     }
   }, [value, multiSelect]);
 
-  // Focus search input when dropdown opens
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
       setTimeout(() => searchInputRef.current?.focus(), 50);
@@ -75,7 +65,6 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
     }
   }, [isOpen]);
 
-  // Calculate dropdown position using fixed coordinates
   const updateDropdownPosition = useCallback(() => {
     if (buttonRef.current && isOpen) {
       const rect = buttonRef.current.getBoundingClientRect();
@@ -93,7 +82,6 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
     updateDropdownPosition();
   }, [isOpen, updateDropdownPosition]);
 
-  // Recalculate on scroll/resize (capture phase for scroll)
   useEffect(() => {
     if (!isOpen) return;
     window.addEventListener('scroll', updateDropdownPosition, true);
@@ -104,7 +92,6 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
     };
   }, [isOpen, updateDropdownPosition]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -123,7 +110,6 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
     };
   }, []);
 
-  // Filter options by search query
   const filteredOptions = useMemo(() => {
     if (!searchQuery.trim()) return options;
     const query = searchQuery.toLowerCase();
@@ -201,7 +187,8 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
     }
   };
 
-  // Dropdown panel rendered via portal to escape overflow clipping
+  const groupNumber = groupInfo ? parseInt(groupInfo.name.replace('Group ', '')) || 1 : null;
+
   const dropdownEl =
     isOpen && !disabled && dropdownPos ? (
       <div
@@ -216,7 +203,6 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
           boxShadow: 'rgba(0, 0, 0, 0.25) 0px 4px 8px 0px',
         }}
       >
-        {/* Search input — only when options > 5 */}
         {options.length > 5 && (
           <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-200 dark:border-dark-600">
             <svg
@@ -246,7 +232,6 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
           </div>
         )}
 
-        {/* Options list */}
         <div className="overflow-y-auto overflow-x-hidden" style={{ maxHeight: options.length > 5 ? '300px' : '400px' }}>
           {filteredOptions.length > 0 ? (
             filteredOptions.map((option, index) => (
@@ -287,6 +272,17 @@ const DropdownParameterComponent: React.FC<DropdownParameterComponentProps> = ({
 
   return (
     <div className="obb-parameter flex items-center justify-between gap-1 h-[20px]">
+      {groupNumber !== null && (
+        <div className="flex-shrink-0">
+          <ParameterGroupingBadge
+            groupNumber={groupNumber}
+            groupName={groupInfo?.name}
+            description={groupInfo?.description}
+            widgetIds={groupInfo?.widgetIds}
+            paramName={groupInfo?.paramName}
+          />
+        </div>
+      )}
       <button
         ref={buttonRef}
         type="button"

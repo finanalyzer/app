@@ -1,5 +1,5 @@
 import React, { memo, useCallback } from 'react';
-import type { WidgetParameter } from '../../../types/widgets';
+import type { WidgetParameter, Group } from '../../../types/widgets';
 import { isEndpointParameter, isFormParameter } from '../../../types/widgets';
 import EndpointParameterComponent from './EndpointParameterComponent';
 import FormParameterComponent from './FormParameterComponent';
@@ -17,6 +17,7 @@ interface ParameterRendererProps {
   disabled?: boolean;
   onFormSubmit?: (result: unknown) => void;
   connectionUrl?: string;
+  groupInfo?: Group;
 }
 
 const ParameterRenderer: React.FC<ParameterRendererProps> = ({
@@ -28,8 +29,8 @@ const ParameterRenderer: React.FC<ParameterRendererProps> = ({
   disabled = false,
   onFormSubmit,
   connectionUrl,
+  groupInfo,
 }) => {
-  // Memoized event handlers for better performance
   const handleStringChange = useCallback((value: string | number) => {
     onChange(String(value));
   }, [onChange]);
@@ -65,6 +66,7 @@ const ParameterRenderer: React.FC<ParameterRendererProps> = ({
         instanceId={instanceId}
         disabled={disabled}
         connectionUrl={connectionUrl}
+        groupInfo={groupInfo}
       />
     );
   }
@@ -81,7 +83,6 @@ const ParameterRenderer: React.FC<ParameterRendererProps> = ({
     );
   }
 
-  // Handle basic parameter types
   switch (parameter.type) {
     case 'string':
       return (
@@ -150,6 +151,7 @@ const ParameterRenderer: React.FC<ParameterRendererProps> = ({
           value={String(value || '')}
           onChange={(newValue) => onChange(newValue)}
           disabled={disabled}
+          groupInfo={groupInfo}
         />
       );
 
@@ -163,6 +165,7 @@ const ParameterRenderer: React.FC<ParameterRendererProps> = ({
           instanceId={instanceId}
           disabled={disabled}
           connectionUrl={connectionUrl}
+          groupInfo={groupInfo}
         />
       );
 
@@ -173,6 +176,7 @@ const ParameterRenderer: React.FC<ParameterRendererProps> = ({
           value={String(value || '')}
           onChange={handleDateChange}
           disabled={disabled}
+          groupInfo={groupInfo}
         />
       );
 

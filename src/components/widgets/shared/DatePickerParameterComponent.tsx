@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { WidgetParameter } from '../../../types/widgets';
+import type { WidgetParameter, Group } from '../../../types/widgets';
 import { format, parse, isValid, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import ParameterGroupingBadge from './ParameterGroupingBadge';
 
 interface DatePickerParameterComponentProps {
   parameter: WidgetParameter;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  groupInfo?: Group;
 }
 
-/** Maps a date modifier string like "$currentDate" or "$currentDate-1d" to a formatted date */
 function resolveDateModifier(raw: string, targetFormat = 'yyyy-MM-dd'): string {
   if (!raw) return raw;
   const trimmed = raw.trim();
@@ -25,10 +26,8 @@ function resolveDateModifier(raw: string, targetFormat = 'yyyy-MM-dd'): string {
   return format(now, targetFormat);
 }
 
-/** Formats a "yyyy-MM-dd" string to "MMM DD, YYYY" display format */
 function formatDisplay(dateStr: string): string {
   if (!dateStr) return '';
-  // If it's a modifier like $currentDate, resolve it first
   const resolved = resolveDateModifier(dateStr);
   try {
     const d = parse(resolved, 'yyyy-MM-dd', new Date());
@@ -48,8 +47,8 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
   value,
   onChange,
   disabled = false,
+  groupInfo,
 }) => {
-  // Resolve the current date value (handle $currentDate modifiers)
   const resolvedValue = useMemo(() => resolveDateModifier(value), [value]);
 
   const [isOpen, setIsOpen] = useState(false);
@@ -66,7 +65,6 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Update view date when value changes externally
   useEffect(() => {
     const d = parse(resolvedValue, 'yyyy-MM-dd', new Date());
     if (isValid(d)) {
@@ -74,7 +72,6 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
     }
   }, [resolvedValue]);
 
-  // Calculate dropdown position
   const updateDropdownPosition = useCallback(() => {
     if (buttonRef.current && isOpen) {
       const rect = buttonRef.current.getBoundingClientRect();
@@ -102,7 +99,6 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
     };
   }, [isOpen, updateDropdownPosition]);
 
-  // Close when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -118,7 +114,6 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Build calendar days
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(viewDate);
     const monthEnd = endOfMonth(viewDate);
@@ -153,7 +148,8 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
   const displayLabel = resolvedValue ? formatDisplay(resolvedValue) : (parameter.label || 'Select Date');
   const today = new Date();
 
-  // Calendar panel via portal
+  const groupNumber = groupInfo ? parseInt(groupInfo.name.replace('Group ', '')) || 1 : null;
+
   const calendarEl =
     isOpen && !disabled && dropdownPos ? (
       <div
@@ -168,7 +164,6 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
         }}
         onKeyDown={handleKeyDown}
       >
-        {/* Month header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-dark-600">
           <button
             type="button"
@@ -195,7 +190,6 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
           </button>
         </div>
 
-        {/* Day-of-week header */}
         <div className="grid grid-cols-7 px-2 pt-2">
           {DAYS_OF_WEEK.map((d) => (
             <div key={d} className="text-center text-2xs text-gray-400 dark:text-gray-500 py-1">
@@ -204,7 +198,6 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
           ))}
         </div>
 
-        {/* Days grid */}
         <div className="grid grid-cols-7 px-2 pb-2">
           {calendarDays.map((day, i) => {
             const isSelected = selectedDate && isSameDay(day, selectedDate);
@@ -234,6 +227,17 @@ const DatePickerParameterComponent: React.FC<DatePickerParameterComponentProps> 
 
   return (
     <div className="obb-parameter flex items-center justify-between gap-1 h-[20px]">
+      {groupNumber !== null && (
+        <div className="flex-shrink-0">
+          <ParameterGroupingBadge
+            groupNumber={groupNumber}
+            groupName={groupInfo?.name}
+            description={groupInfo?.description}
+            widgetIds={groupInfo?.widgetIds}
+            paramName={groupInfo?.paramName}
+          />
+        </div>
+      )}
       <button
         ref={buttonRef}
         type="button"

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { WidgetParameter, ParameterOption } from '../../../types/widgets';
+import type { WidgetParameter, ParameterOption, Group } from '../../../types/widgets';
 import { isEndpointParameter } from '../../../types/widgets';
 import { parameterService } from '../../../services/parameters/parameterService';
 import { Button, Icon } from '@openbb/ui';
+import ParameterGroupingBadge from './ParameterGroupingBadge';
 
 interface EndpointParameterComponentProps {
   parameter: WidgetParameter;
@@ -13,6 +14,7 @@ interface EndpointParameterComponentProps {
   instanceId: string;
   disabled?: boolean;
   connectionUrl?: string;
+  groupInfo?: Group;
 }
 
 const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
@@ -23,6 +25,7 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
   instanceId,
   disabled = false,
   connectionUrl,
+  groupInfo,
 }) => {
   const [options, setOptions] = useState<ParameterOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,7 +43,6 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
   const multiSelect = parameter.multiSelect ?? false;
   const popupWidth = parameter.style?.popupWidth;
 
-  // Initialize selected values from comma-separated value string
   useEffect(() => {
     if (multiSelect && value) {
       setSelectedValues(new Set(value.split(',').map(v => v.trim()).filter(Boolean)));
@@ -69,7 +71,6 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
     }
   }, [parameter, widgetId, instanceId, disabled, connectionUrl]);
 
-  // Fetch options when component mounts or when parameter changes
   useEffect(() => {
     if (isEndpointParameter(parameter)) {
       fetchOptions();
@@ -80,7 +81,6 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
     fetchOptions();
   }, [fetchOptions]);
 
-  // Filter options by search query
   const filteredOptions = useMemo(() => {
     if (!searchQuery.trim()) return options;
     const query = searchQuery.toLowerCase();
@@ -91,24 +91,20 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
     );
   }, [options, searchQuery]);
 
-  // Focus search input when dropdown opens
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
       setTimeout(() => searchInputRef.current?.focus(), 50);
     }
-    // Reset search and focused index when opening
     if (isOpen) {
       setSearchQuery('');
       setFocusedOptionIndex(0);
     }
   }, [isOpen]);
 
-  // Calculate dropdown position using fixed coordinates to escape overflow clipping
   const updateDropdownPosition = useCallback(() => {
     if (buttonRef.current && isOpen) {
       const rect = buttonRef.current.getBoundingClientRect();
       const popupW = popupWidth || Math.max(rect.width, 190);
-      // Clamp left so dropdown doesn't overflow viewport
       const left = Math.min(rect.left, window.innerWidth - popupW - 8);
       setDropdownPos({
         top: rect.bottom + 4,
@@ -122,7 +118,6 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
     updateDropdownPosition();
   }, [isOpen, updateDropdownPosition]);
 
-  // Recalculate on scroll/resize
   useEffect(() => {
     if (!isOpen) return;
     window.addEventListener('scroll', updateDropdownPosition, true);
@@ -133,7 +128,6 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
     };
   }, [isOpen, updateDropdownPosition]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -225,6 +219,8 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
     }
   };
 
+  const groupNumber = groupInfo ? parseInt(groupInfo.name.replace('Group ', '')) || 1 : null;
+
   if (!isEndpointParameter(parameter)) {
     return null;
   }
@@ -240,7 +236,6 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
         maxWidth: '90vw',
       }}
     >
-      {/* Search input */}
       {options.length > 5 && (
         <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-200 dark:border-dark-600">
           <svg
@@ -270,7 +265,6 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
         </div>
       )}
 
-      {/* Options list */}
       <div className="max-h-[300px] overflow-y-auto overflow-x-hidden py-1">
         {filteredOptions.length > 0 ? (
           filteredOptions.map((option, index) => (
@@ -284,7 +278,6 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
               onClick={() => handleSelect(String(option.value))}
               onMouseEnter={() => setFocusedOptionIndex(index)}
             >
-              {/* Left side: label + checkmark */}
               <span className="inline-flex gap-2 items-center min-w-0 flex-shrink">
                 <span className="truncate">{option.label}</span>
                 {isSelected(String(option.value)) && (
@@ -302,7 +295,6 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
                 )}
               </span>
 
-              {/* Right side: extra info */}
               {option.extraInfo && (option.extraInfo.description || option.extraInfo.rightOfDescription) && (
                 <span className="uppercase tracking-wide flex gap-1 ml-auto flex-shrink-0">
                   {option.extraInfo.description && (
@@ -331,6 +323,17 @@ const EndpointParameterComponent: React.FC<EndpointParameterComponentProps> = ({
   return (
     <div className="endpoint-parameter">
       <div className="flex items-center justify-between">
+        {groupNumber !== null && (
+          <div className="flex-shrink-0 mr-2">
+            <ParameterGroupingBadge
+              groupNumber={groupNumber}
+              groupName={groupInfo?.name}
+              description={groupInfo?.description}
+              widgetIds={groupInfo?.widgetIds}
+              paramName={groupInfo?.paramName}
+            />
+          </div>
+        )}
         <Button
           ref={buttonRef}
           variant="ghost"

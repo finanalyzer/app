@@ -1,6 +1,6 @@
 
 
-import type { WidgetParameterType, WidgetParameter } from '../../types/widgets';
+import type { WidgetParameterType, WidgetParameter, Group } from '../../types/widgets';
 import { isEndpointParameter } from '../../types/widgets';
 import FormParameterComponent from '../widgets/shared/FormParameterComponent';
 import EndpointParameterComponent from '../widgets/shared/EndpointParameterComponent';
@@ -21,6 +21,7 @@ interface ParameterInputProps {
   connectionUrl?: string;
   widgetId?: string;
   instanceId?: string;
+  groupInfo?: Group;
 }
 
 export function ParameterInput({
@@ -36,6 +37,7 @@ export function ParameterInput({
   connectionUrl = '',
   widgetId = paramName,
   instanceId = paramName,
+  groupInfo,
 }: ParameterInputProps): JSX.Element {
   const toBoolean = (val: unknown): boolean => {
     if (typeof val === 'boolean') return val;
@@ -126,6 +128,7 @@ export function ParameterInput({
             value={String(value || parameter.default || '')}
             onChange={(newValue) => onChange(paramName, newValue)}
             disabled={disabled}
+            groupInfo={groupInfo}
           />
         );
       }
@@ -151,6 +154,7 @@ export function ParameterInput({
             value={String(value || parameter.default || '')}
             onChange={(newValue) => onChange(paramName, newValue)}
             disabled={disabled}
+            groupInfo={groupInfo}
           />
         );
       }
@@ -191,6 +195,7 @@ export function ParameterInput({
             instanceId={instanceId}
             disabled={disabled}
             connectionUrl={connectionUrl}
+            groupInfo={groupInfo}
           />
         );
       }
@@ -219,6 +224,7 @@ export function ParameterInput({
             instanceId={instanceId}
             disabled={disabled}
             connectionUrl={connectionUrl}
+            groupInfo={groupInfo}
           />
         );
       }

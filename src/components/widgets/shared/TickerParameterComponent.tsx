@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { WidgetParameter, ParameterOption } from '../../../types/widgets';
+import type { WidgetParameter, ParameterOption, Group } from '../../../types/widgets';
 import { parameterService } from '../../../services/parameters/parameterService';
+import ParameterGroupingBadge from './ParameterGroupingBadge';
 
 interface TickerParameterComponentProps {
   parameter: WidgetParameter;
@@ -11,9 +12,9 @@ interface TickerParameterComponentProps {
   instanceId: string;
   disabled?: boolean;
   connectionUrl?: string;
+  groupInfo?: Group;
 }
 
-// Recent tickers stored in localStorage
 const RECENT_TICKERS_KEY = 'finanalyzer_recent_tickers';
 const MAX_RECENT = 5;
 
@@ -41,9 +42,10 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
   instanceId,
   disabled = false,
   connectionUrl,
+  groupInfo,
 }) => {
   const [inputValue, setInputValue] = useState(value || '');
-  const [isFocused, setIsFocused] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<ParameterOption[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -58,14 +60,12 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync external value changes to input
   useEffect(() => {
     setInputValue(value || '');
   }, [value]);
 
-  // Calculate dropdown position
   const updateDropdownPosition = useCallback(() => {
-    if (inputRef.current && isFocused) {
+    if (inputRef.current && isOpen) {
       const rect = inputRef.current.getBoundingClientRect();
       const popupW = Math.max(rect.width, 280);
       const left = Math.min(rect.left, window.innerWidth - popupW - 8);
@@ -75,24 +75,22 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
         width: popupW,
       });
     }
-  }, [isFocused]);
+  }, [isOpen]);
 
   useEffect(() => {
     updateDropdownPosition();
-  }, [isFocused, updateDropdownPosition]);
+  }, [isOpen, updateDropdownPosition]);
 
-  // Recalculate on scroll/resize
   useEffect(() => {
-    if (!isFocused) return;
+    if (!isOpen) return;
     window.addEventListener('scroll', updateDropdownPosition, true);
     window.addEventListener('resize', updateDropdownPosition);
     return () => {
       window.removeEventListener('scroll', updateDropdownPosition, true);
       window.removeEventListener('resize', updateDropdownPosition);
     };
-  }, [isFocused, updateDropdownPosition]);
+  }, [isOpen, updateDropdownPosition]);
 
-  // Close on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -101,14 +99,13 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
-        setIsFocused(false);
+        setIsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Search for tickers via the parameterService
   const searchTickers = useCallback(
     async (query: string) => {
       if (!query.trim()) {
@@ -136,14 +133,12 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
     [widgetId, instanceId, connectionUrl, parameter.name, parameter.paramName],
   );
 
-  // Handle input change with debounce
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
       setInputValue(newValue);
       setFocusedIndex(-1);
 
-      // Debounce search
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
@@ -154,20 +149,18 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
     [searchTickers],
   );
 
-  // Handle selecting a ticker from dropdown
   const handleSelectTicker = useCallback(
     (option: ParameterOption) => {
       const tickerValue = String(option.value);
       addRecentTicker(tickerValue);
       setInputValue(tickerValue);
       onChange(tickerValue);
-      setIsFocused(false);
+      setIsOpen(false);
       setSearchResults([]);
     },
     [onChange],
   );
 
-  // Handle keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       const recentTickers = getRecentTickers();
@@ -185,7 +178,6 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
         case 'Enter':
           e.preventDefault();
           if (focusedIndex >= 0) {
-            // Determine if focused item is in recent or search results
             const recentCount = recentTickers.length;
             if (focusedIndex < recentCount && recentCount > 0) {
               const recentItem = recentTickers[focusedIndex];
@@ -198,20 +190,18 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
                 handleSelectTicker(searchResults[resultIndex]);
               }
             }
-            setIsFocused(false);
+            setIsOpen(false);
           } else {
-            // No item focused, commit the current input
             onChange(inputValue);
             addRecentTicker(inputValue);
-            setIsFocused(false);
+            setIsOpen(false);
           }
           break;
         case 'Escape':
           e.preventDefault();
-          setIsFocused(false);
+          setIsOpen(false);
           break;
         case ',':
-          // Comma is allowed for multi-ticker input — commit current
           if (inputValue.trim()) {
             onChange(inputValue);
           }
@@ -221,19 +211,15 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
     [focusedIndex, searchResults, handleSelectTicker, onChange, inputValue],
   );
 
-  // Handle focus
   const handleFocus = useCallback(() => {
-    setIsFocused(true);
+    setIsOpen(true);
     setFocusedIndex(-1);
-    // Show recent tickers if input is empty
     if (!inputValue.trim()) {
       searchTickers('');
     }
   }, [inputValue, searchTickers]);
 
-  // Handle blur with delay to allow click on dropdown items
   const handleBlur = useCallback(() => {
-    // Delay to allow dropdown item click to register
     setTimeout(() => {
       if (
         dropdownRef.current &&
@@ -241,25 +227,32 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
         inputRef.current &&
         !inputRef.current.contains(document.activeElement)
       ) {
-        // Commit the current value on blur
         if (inputValue !== value) {
           onChange(inputValue);
           if (inputValue.trim()) {
             addRecentTicker(inputValue.trim());
           }
         }
-        setIsFocused(false);
+        setIsOpen(false);
       }
     }, 150);
   }, [inputValue, value, onChange]);
 
-  // Recent tickers for display
-  const recentTickers = useMemo(() => getRecentTickers(), [isFocused]);
+  const handleButtonClick = useCallback(() => {
+    if (!disabled) {
+      setIsOpen(!isOpen);
+      if (!isOpen) {
+        inputRef.current?.focus();
+      }
+    }
+  }, [isOpen, disabled]);
 
-  // Whether to show the dropdown
-  const showDropdown = isFocused && !disabled;
+  const recentTickers = useMemo(() => getRecentTickers(), [isOpen]);
 
-  // Render dropdown via portal
+  const showDropdown = isOpen && !disabled;
+
+  const groupNumber = groupInfo ? parseInt(groupInfo.name.replace('Group ', '')) || 1 : null;
+
   const dropdownEl =
     showDropdown && dropdownPos ? (
       <div
@@ -280,7 +273,6 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
 
         {!isSearching && (
           <>
-            {/* Recent tickers section */}
             {recentTickers.length > 0 && !inputValue.trim() && (
               <div>
                 <div className="px-2 py-1 text-[10px] font-semibold text-gray-400 dark:text-dark-400 uppercase tracking-wider">
@@ -298,7 +290,7 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
                       addRecentTicker(ticker);
                       setInputValue(ticker);
                       onChange(ticker);
-                      setIsFocused(false);
+                      setIsOpen(false);
                     }}
                     onMouseEnter={() => setFocusedIndex(index)}
                   >
@@ -308,7 +300,6 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
               </div>
             )}
 
-            {/* Search results section */}
             {searchResults.length > 0 && (
               <div>
                 {recentTickers.length > 0 && !inputValue.trim() && (
@@ -336,9 +327,7 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
                       onClick={() => handleSelectTicker(option)}
                       onMouseEnter={() => setFocusedIndex(adjustedIndex)}
                     >
-                      {/* Label */}
                       <span className="truncate">{option.label}</span>
-                      {/* Extra info */}
                       {option.extraInfo && (option.extraInfo.description || option.extraInfo.rightOfDescription) && (
                         <span className="uppercase tracking-wide flex gap-1 ml-auto flex-shrink-0">
                           {option.extraInfo.description && (
@@ -359,14 +348,12 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
               </div>
             )}
 
-            {/* No results */}
             {!isSearching && inputValue.trim() && searchResults.length === 0 && (
               <div className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 text-center">
                 No matching tickers found
               </div>
             )}
 
-            {/* Empty state with no recent and no search */}
             {!isSearching && !inputValue.trim() && recentTickers.length === 0 && (
               <div className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 text-center">
                 Type to search for tickers
@@ -378,19 +365,53 @@ const TickerParameterComponent: React.FC<TickerParameterComponentProps> = ({
     ) : null;
 
   return (
-    <div ref={containerRef} className="ticker-parameter">
-      <input
-        ref={inputRef}
-        type="text"
-        value={inputValue}
-        onChange={handleInputChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
+    <div ref={containerRef} className="obb-parameter flex items-center justify-between gap-1 h-[20px]">
+      {groupNumber !== null && (
+        <div className="flex-shrink-0">
+          <ParameterGroupingBadge
+            groupNumber={groupNumber}
+            groupName={groupInfo?.name}
+            description={groupInfo?.description}
+            widgetIds={groupInfo?.widgetIds}
+            paramName={groupInfo?.paramName}
+          />
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={handleButtonClick}
         disabled={disabled}
-        placeholder={parameter.description || parameter.label || 'Search ticker...'}
-        className="obb-minimal-input bg-transparent dark:bg-transparent px-0 h-[18.8px]! border-none! w-[120px] min-w-[96px] max-w-[200px] text-xs text-grey-900 dark:text-grey-100 placeholder:text-grey-500 dark:placeholder:text-grey-400 focus:outline-none"
-      />
+        className="flex items-center justify-between gap-1 cursor-pointer h-[20px] text-xs _select-ticker"
+      >
+        <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={handleInputChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
+            placeholder={parameter.description || parameter.label || 'Search ticker...'}
+            className="bg-transparent dark:bg-transparent px-0 h-[18.8px]! border-none! w-auto min-w-[6ch] max-w-[9ch] text-xs text-grey-900 dark:text-grey-100 placeholder:text-grey-500 dark:placeholder:text-grey-400 focus:outline-none"
+          />
+        <svg
+          viewBox="0 0 24 24"
+          width="24"
+          height="24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className={`h-3 w-3 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+        >
+          <path
+            d="m6 9 6 6 6-6"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
       {dropdownEl && createPortal(dropdownEl, document.body)}
     </div>
   );

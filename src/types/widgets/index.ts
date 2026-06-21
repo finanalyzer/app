@@ -17,6 +17,7 @@ export interface Group {
   paramName: string;
   defaultValue: string | number | boolean;
   widgetIds: string[];
+  description?: string;
 }
 
 // Column definition with render function support
