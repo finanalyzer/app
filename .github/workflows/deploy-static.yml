@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master  # Support both main and master branch names
+  workflow_dispatch:  # Enable manual triggering via GitHub Actions UI
 
 jobs:
   build-and-deploy:
