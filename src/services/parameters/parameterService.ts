@@ -1,4 +1,5 @@
 import type { WidgetParameter, ParameterOption } from '../../types/widgets';
+import { connectionService } from '../connections/connectionService';
 
 interface ParamOptionsCache {
   [key: string]: {
@@ -12,6 +13,32 @@ interface FetchOptionsParams {
   widgetId: string;
   instanceId: string;
   baseUrl?: string;
+}
+
+function normalizeUrl(url: string): string {
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
+/**
+ * Look up authentication headers for a given base URL from saved connections.
+ */
+function getAuthHeadersForUrl(baseUrl: string): HeadersInit {
+  const headers: HeadersInit = {};
+  const normalizedUrl = normalizeUrl(baseUrl);
+  const connections = connectionService.getConnections();
+  const connection = connections.find(
+    (conn) => normalizeUrl(conn.url) === normalizedUrl
+  );
+
+  if (connection?.authentication) {
+    connection.authentication.forEach((auth) => {
+      if (auth.location === 'header') {
+        headers[auth.key] = auth.value;
+      }
+    });
+  }
+
+  return headers;
 }
 
 class ParameterService {
@@ -66,11 +93,13 @@ class ParameterService {
   ): Promise<ParameterOption[]> {
     try {
       const url = this.buildOptionsUrl(parameter, baseUrl);
+      // Use connection-aware auth headers (for 3rd-party backends that require them).
+      // Do NOT send Content-Type on GET requests — it triggers a CORS preflight
+      // that some endpoints may not handle.
+      const authHeaders = getAuthHeadersForUrl(baseUrl);
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
       });
 
       if (!response.ok) {
@@ -292,11 +321,10 @@ class ParameterService {
     url = `${url}${separator}query=${encodeURIComponent(query)}&param_name=${encodeURIComponent(paramName)}`;
 
     try {
+      const authHeaders = getAuthHeadersForUrl(baseUrl);
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
       });
 
       if (!response.ok) {
@@ -326,8 +354,11 @@ class ParameterService {
     // Compose URL properly
     const isFullUrl = parameter.endpoint.startsWith('http://') || parameter.endpoint.startsWith('https://');
     let url: string;
+    let authLookupUrl: string;
     if (isFullUrl) {
       url = parameter.endpoint;
+      // Look up auth by extracting the origin from the full endpoint URL
+      authLookupUrl = new URL(parameter.endpoint).origin;
     } else {
       // Normalize connectionUrl: remove trailing slash
       const normalizedBaseUrl = connectionUrl.endsWith('/') 
@@ -340,13 +371,16 @@ class ParameterService {
         : `/${parameter.endpoint}`;
       
       url = `${normalizedBaseUrl}${normalizedEndpoint}`;
+      authLookupUrl = normalizedBaseUrl;
     }
 
     try {
+      const authHeaders = getAuthHeadersForUrl(authLookupUrl);
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders,
         },
         body: JSON.stringify(formData),
       });
