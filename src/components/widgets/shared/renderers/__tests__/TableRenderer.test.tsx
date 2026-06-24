@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createNumberFormatter } from '../TableRenderer';
+import { createNumberFormatter, dateStringFormatter } from '../TableRenderer';
 
 describe('TableRenderer', () => {
   describe('createNumberFormatter', () => {
@@ -46,6 +46,58 @@ describe('TableRenderer', () => {
       const formatter = createNumberFormatter(2);
       expect(formatter({ value: -3.14 } as any)).toBe('-3.14');
       expect(formatter({ value: -2.71828 } as any)).toBe('-2.72');
+    });
+  });
+
+  describe('dateStringFormatter', () => {
+    it('should format YYYY-MM-DD date correctly', () => {
+      expect(dateStringFormatter({ value: '2021-06-29' } as any)).toBe('2021-06-29');
+    });
+
+    it('should format YYYY/MM/DD date correctly', () => {
+      expect(dateStringFormatter({ value: '2021/06/29' } as any)).toBe('2021-06-29');
+    });
+
+    it('should format MM/DD/YYYY date correctly', () => {
+      expect(dateStringFormatter({ value: '06/29/2021' } as any)).toBe('2021-06-29');
+    });
+
+    it('should format ISO string date correctly', () => {
+      expect(dateStringFormatter({ value: '2021-06-29T14:30:00.000Z' } as any)).toBe('2021-06-29');
+    });
+
+    it('should format date with time correctly', () => {
+      expect(dateStringFormatter({ value: '2021-06-29 14:30:00' } as any)).toBe('2021-06-29');
+    });
+
+    it('should format Chinese date format correctly', () => {
+      expect(dateStringFormatter({ value: '2021年6月29日' } as any)).toBe('2021-06-29');
+      expect(dateStringFormatter({ value: '2021年06月29日' } as any)).toBe('2021-06-29');
+    });
+
+    it('should handle Unix timestamp in milliseconds', () => {
+      expect(dateStringFormatter({ value: '1624953600000' } as any)).toBe('2021-06-29');
+    });
+
+    it('should handle Unix timestamp in seconds', () => {
+      expect(dateStringFormatter({ value: '1624953600' } as any)).toBe('2021-06-29');
+    });
+
+    it('should handle null and undefined values', () => {
+      expect(dateStringFormatter({ value: null } as any)).toBe('');
+      expect(dateStringFormatter({ value: undefined } as any)).toBe('');
+      expect(dateStringFormatter({ value: '' } as any)).toBe('');
+    });
+
+    it('should return original value for invalid dates', () => {
+      expect(dateStringFormatter({ value: 'not a date' } as any)).toBe('not a date');
+      expect(dateStringFormatter({ value: '2021/13/32' } as any)).toBe('2021/13/32');
+    });
+
+    it('should NOT convert date to number format (regression test for bug)', () => {
+      const result = dateStringFormatter({ value: '2021-06-29' } as any);
+      expect(result).not.toBe('2021.00');
+      expect(result).toBe('2021-06-29');
     });
   });
 });

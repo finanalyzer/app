@@ -90,7 +90,7 @@ function percentFormatter(params: ValueFormatterParams): string {
   return `${numValue.toFixed(2)}%`;
 }
 
-function dateStringFormatter(params: ValueFormatterParams): string {
+export function dateStringFormatter(params: ValueFormatterParams): string {
   const value = params.value;
   if (value === null || value === undefined || value === '') return '';
   
@@ -315,6 +315,9 @@ function createColumnDefsFromConfig(columnsDefs: ColumnDef[], availableColumns: 
     
     if (colDef.cellDataType === 'dateString') {
       column.valueFormatter = dateStringFormatter;
+    } else if (!colDef.formatterFn && isDateColumn(colDef.field)) {
+      column.cellDataType = 'dateString';
+      column.valueFormatter = dateStringFormatter;
     }
     
     if (isNumericColumn(colDef.field)) {
@@ -354,6 +357,12 @@ function isNumericColumn(col: string): boolean {
   return false;
 }
 
+function isDateColumn(col: string): boolean {
+  const dateKeywords = ['date', 'time', 'timestamp', 'datetime', 'period', 'day', 'month', 'year'];
+  const lowerCol = col.toLowerCase();
+  return dateKeywords.some(keyword => lowerCol.includes(keyword));
+}
+
 function createColumnDefs(columns: string[]): ColDef[] {
   return columns.map((col) => {
     const column: ColDef = {
@@ -366,7 +375,10 @@ function createColumnDefs(columns: string[]): ColDef[] {
       minWidth: 100,
     };
     
-    if (isNumericColumn(col)) {
+    if (isDateColumn(col)) {
+      column.cellDataType = 'dateString';
+      column.valueFormatter = dateStringFormatter;
+    } else if (isNumericColumn(col)) {
       column.cellStyle = { textAlign: 'right' };
     }
     
