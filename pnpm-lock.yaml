@@ -17,6 +17,9 @@ importers:
       '@openbb/ui':
         specifier: ^0.14.17
         version: 0.14.17(@types/react-dom@18.3.7(@types/react@18.3.30))(@types/react@18.3.30)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tanstack/history':
+        specifier: ^1.162.0
+        version: 1.162.0
       '@tanstack/react-query':
         specifier: ^5.8.0
         version: 5.101.0(react@18.3.1)
