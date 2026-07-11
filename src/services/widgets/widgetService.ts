@@ -1,5 +1,5 @@
 import type { WidgetConfig, WidgetParameter } from "../../types/widgets";
-import { connectionService } from "../connections/connectionService";
+import { connectionService, normalizeBaseUrl } from "../connections/connectionService";
 import { WidgetFactory } from "./widgetFactory";
 
 /** Resolves OpenBB date modifiers like "$currentDate", "$currentDate-1d" to actual dates */
@@ -64,7 +64,7 @@ class WidgetService {
               }
             });
 
-            const url = `${connection.url}/widgets.json${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+            const url = `${normalizeBaseUrl(connection.url)}/widgets.json${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
 
             const fetchController = new AbortController();
             const timeoutId = setTimeout(() => fetchController.abort(), 10000);

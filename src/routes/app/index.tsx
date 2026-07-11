@@ -2,7 +2,7 @@ import { Button, Icon, Input } from "@openbb/ui";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { connectionService } from "../../services/connections/connectionService";
+import { connectionService, normalizeBaseUrl } from "../../services/connections/connectionService";
 import { addWidget, createDashboard, type Widget } from "../../services/dashboardApi";
 import { widgetService } from "../../services/widgets/widgetService";
 import { cn } from "../../utils/cn";
@@ -224,7 +224,7 @@ class AppService {
               }
             });
 
-            const url = `${connection.url}/apps.json${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+            const url = `${normalizeBaseUrl(connection.url)}/apps.json${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
             debugLog("info", `Fetching apps from: ${url}`);
 
             // Create a new AbortController with timeout for this specific fetch

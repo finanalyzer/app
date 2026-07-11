@@ -1,7 +1,7 @@
 import type { Connection } from "../../types/connections";
 import { ConnectionStorageFactory } from "./ConnectionStorageFactory";
 
-function normalizeBaseUrl(url: string): string {
+export function normalizeBaseUrl(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
