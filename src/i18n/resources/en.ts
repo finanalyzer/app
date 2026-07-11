@@ -238,6 +238,7 @@ export default {
     main: {
       apps: "Apps",
       connections: "Connections",
+      passxyz: "PassXYZ",
     },
     library: {
       title: "Library",

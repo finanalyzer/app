@@ -17,7 +17,7 @@ import "./Sidebar.css";
 interface NavItem {
   id: string;
   label: string;
-  icon: string;
+  icon: string | React.ReactNode;
   href: string;
 }
 
@@ -38,6 +38,12 @@ const mainNavItems: NavItem[] = [
     label: "sidebar.main.connections",
     icon: "terminal",
     href: "/connections",
+  },
+  {
+    id: "passxyz",
+    label: "sidebar.main.passxyz",
+    icon: <img src={`${import.meta.env.BASE_URL}passxyz.svg`} alt="PassXYZ" className="w-4 h-4 object-contain" />,
+    href: "/vault",
   },
 ];
 
@@ -328,7 +334,11 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
             className={`sidebar-nav-item ${isActive(item.href) ? "active" : ""}`}
             aria-current={isActive(item.href) ? "page" : undefined}
           >
-            <Icon name={item.icon as never} />
+            {typeof item.icon === "string" ? (
+              <Icon name={item.icon as never} />
+            ) : (
+              item.icon
+            )}
             <span className="sidebar-nav-text">{t(item.label)}</span>
           </Link>
         ))}

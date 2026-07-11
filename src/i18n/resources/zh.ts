@@ -236,6 +236,7 @@ export default {
     main: {
       apps: "应用",
       connections: "连接",
+      passxyz: "PassXYZ",
     },
     library: {
       title: "库",
