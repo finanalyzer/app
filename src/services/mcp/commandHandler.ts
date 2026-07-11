@@ -442,6 +442,7 @@ export class CommandHandler {
         url,
         apiKey: '',
         validateWidgets: validateWidgets !== false,
+        authType: authentication.length > 0 ? 'custom' : 'none',
         authentication,
       });
 

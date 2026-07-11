@@ -1,24 +1,26 @@
-import { generateUUID } from "../../utils/uuid";
 import type { Connection } from "../../types/connections";
+import { ConnectionStorageFactory } from "./ConnectionStorageFactory";
 
-const STORAGE_KEY = "finanalyzer_connections";
-
-// Helper function to normalize base URL (remove trailing slash)
 function normalizeBaseUrl(url: string): string {
   return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
-// HTTP header names must be valid tokens (RFC 7230)
-// Valid chars: alphanum, !, #, $, %, &, ', *, +, -, ., ^, _, `, |, ~
 function isValidHeaderName(name: string): boolean {
   return /^[a-zA-Z0-9\-_!#$%&'*+.`|^~]+$/.test(name);
+}
+
+function getPassxyzToken(): string | null {
+  return localStorage.getItem('passxyz-token');
+}
+
+function getStorage() {
+  return ConnectionStorageFactory.getInstance();
 }
 
 export const connectionService = {
   getConnections(): Connection[] {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
+      return getStorage().getConnections();
     } catch (error) {
       console.error("Error getting connections:", error);
       return [];
@@ -27,8 +29,7 @@ export const connectionService = {
 
   getConnection(id: string): Connection | undefined {
     try {
-      const connections = this.getConnections();
-      return connections.find((conn) => conn.id === id);
+      return getStorage().getConnection(id);
     } catch (error) {
       console.error("Error getting connection:", error);
       return undefined;
@@ -42,26 +43,7 @@ export const connectionService = {
     >,
   ): Connection {
     try {
-      const newConnection: Connection = {
-        ...connection,
-        id: generateUUID(),
-        status: "disconnected",
-        metrics: {
-          apps: 0,
-          widgets: 0,
-          prompts: 0,
-          agents: 0,
-        },
-        lastActivity: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const connections = this.getConnections();
-      connections.push(newConnection);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(connections));
-
-      return newConnection;
+      return getStorage().createConnection(connection);
     } catch (error) {
       console.error("Error creating connection:", error);
       throw error;
@@ -73,21 +55,7 @@ export const connectionService = {
     updates: Partial<Connection>,
   ): Connection | undefined {
     try {
-      const connections = this.getConnections();
-      const index = connections.findIndex((conn) => conn.id === id);
-
-      if (index === -1) {
-        return undefined;
-      }
-
-      connections[index] = {
-        ...connections[index],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(connections));
-      return connections[index];
+      return getStorage().updateConnection(id, updates);
     } catch (error) {
       console.error("Error updating connection:", error);
       return undefined;
@@ -96,19 +64,15 @@ export const connectionService = {
 
   deleteConnection(id: string): boolean {
     try {
-      const connections = this.getConnections();
-      const newConnections = connections.filter((conn) => conn.id !== id);
-
-      if (newConnections.length === connections.length) {
-        return false;
-      }
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newConnections));
-      return true;
+      return getStorage().deleteConnection(id);
     } catch (error) {
       console.error("Error deleting connection:", error);
       return false;
     }
+  },
+
+  getStorageType(): string {
+    return getStorage().getStorageType();
   },
 
   updateConnectionStatus(id: string, status: Connection["status"]): void {
@@ -155,6 +119,7 @@ export const connectionService = {
 
       const result = await this.testConnectionWithDetails({
         url: connection.url,
+        authType: connection.authType,
         authentication: connection.authentication,
         validateWidgets: connection.validateWidgets,
       });
@@ -179,6 +144,7 @@ export const connectionService = {
 
   async testConnectionWithDetails(details: {
     url: string;
+    authType: Connection["authType"];
     authentication: Array<{
       key: string;
       value: string;
@@ -190,24 +156,30 @@ export const connectionService = {
     const headers: HeadersInit = {};
     const params = new URLSearchParams();
 
-    for (const auth of details.authentication) {
-      if (auth.location === "header") {
-        if (!isValidHeaderName(auth.key)) {
-          return {
-            connected: false,
-            message: `Invalid header name: "${auth.key}". Header names can only contain alphanumeric characters and these symbols: - _ ! # $ % & ' * + . \` | ~ ^`,
-          };
+    if (details.authType === "passxyz-jwt") {
+      const token = getPassxyzToken();
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+    } else if (details.authType === "custom") {
+      for (const auth of details.authentication) {
+        if (auth.location === "header") {
+          if (!isValidHeaderName(auth.key)) {
+            return {
+              connected: false,
+              message: `Invalid header name: "${auth.key}". Header names can only contain alphanumeric characters and these symbols: - _ ! # $ % & ' * + . \` | ~ ^`,
+            };
+          }
+          headers[auth.key] = auth.value;
+        } else {
+          params.append(auth.key, auth.value);
         }
-        headers[auth.key] = auth.value;
-      } else {
-        params.append(auth.key, auth.value);
       }
     }
 
     const baseUrl = normalizeBaseUrl(details.url);
     const validateWidgetsEnabled = details.validateWidgets !== false;
 
-    // If validateWidgets is enabled, test for widgets.json first
     if (validateWidgetsEnabled) {
       const url = `${baseUrl}/widgets.json${params.toString() ? `?${params.toString()}` : ""}`;
 
@@ -284,8 +256,6 @@ export const connectionService = {
         };
       }
     } else {
-      // If validateWidgets is disabled, test for any available endpoint
-      // including agents.json, apps.json, or prompts.json
       const optionalEndpoints = [
         { name: "widgets", path: "/widgets.json" },
         { name: "agents", path: "/agents.json" },
@@ -337,13 +307,20 @@ export const connectionService = {
       const headers: HeadersInit = {};
       const params = new URLSearchParams();
 
-      connection.authentication.forEach((auth) => {
-        if (auth.location === "header") {
-          headers[auth.key] = auth.value;
-        } else {
-          params.append(auth.key, auth.value);
+      if (connection.authType === "passxyz-jwt") {
+        const token = getPassxyzToken();
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
         }
-      });
+      } else if (connection.authType === "custom") {
+        connection.authentication.forEach((auth) => {
+          if (auth.location === "header") {
+            headers[auth.key] = auth.value;
+          } else {
+            params.append(auth.key, auth.value);
+          }
+        });
+      }
 
       const baseUrl = normalizeBaseUrl(connection.url);
       const metrics = {
@@ -353,7 +330,6 @@ export const connectionService = {
         agents: 0,
       };
 
-      // Check all endpoints including widgets, apps, prompts, and agents
       const endpoints = [
         { name: "widgets", path: "/widgets.json" },
         { name: "apps", path: "/apps.json" },
@@ -393,7 +369,6 @@ export const connectionService = {
               }
             }
           } catch (error) {
-            // Silently ignore errors for individual endpoints
           }
         }),
       );

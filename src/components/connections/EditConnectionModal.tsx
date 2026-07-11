@@ -53,6 +53,7 @@ function EditConnectionModal({
     try {
       const result = await connectionService.testConnectionWithDetails({
         url: values.url,
+        authType: values.authType,
         authentication: values.authentication,
         validateWidgets: values.validateWidgets,
       });

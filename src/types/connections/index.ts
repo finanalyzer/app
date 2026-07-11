@@ -1,3 +1,5 @@
+export type ConnectionAuthType = 'none' | 'custom' | 'passxyz-jwt';
+
 export interface Connection {
   id: string;
   name: string;
@@ -6,6 +8,7 @@ export interface Connection {
   apiSecret?: string;
   description?: string;
   validateWidgets: boolean;
+  authType: ConnectionAuthType;
   authentication: Array<{
     key: string;
     value: string;

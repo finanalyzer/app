@@ -1,58 +1,17 @@
-import { connectionService } from "./connections/connectionService";
+import { getAuthHeaders, getAuthQueryParams, handleUnauthorized } from "./authService";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
-function normalizeUrl(url: string): string {
-  return url.endsWith("/") ? url.slice(0, -1) : url;
-}
-
-function getAuthHeaders(): HeadersInit {
-  const headers: HeadersInit = {};
-  
-  if (!API_BASE_URL) {
-    return headers;
-  }
-
-  const normalizedApiUrl = normalizeUrl(API_BASE_URL);
-  const connections = connectionService.getConnections();
-  const connection = connections.find(
-    (conn) => normalizeUrl(conn.url) === normalizedApiUrl
-  );
-
-  if (connection?.authentication) {
-    connection.authentication.forEach((auth) => {
-      if (auth.location === "header") {
-        headers[auth.key] = auth.value;
-      }
-    });
-  }
-
-  return headers;
-}
-
 function buildUrl(path: string): string {
-  const queryParams = new URLSearchParams();
-  
   if (!API_BASE_URL) {
     return path;
   }
 
-  const normalizedApiUrl = normalizeUrl(API_BASE_URL);
-  const connections = connectionService.getConnections();
-  const connection = connections.find(
-    (conn) => normalizeUrl(conn.url) === normalizedApiUrl
-  );
+  const basePath = `${API_BASE_URL}${path}`;
+  const authParams = getAuthQueryParams(API_BASE_URL);
+  const queryString = authParams.toString();
 
-  if (connection?.authentication) {
-    connection.authentication.forEach((auth) => {
-      if (auth.location === "query") {
-        queryParams.append(auth.key, auth.value);
-      }
-    });
-  }
-
-  const queryString = queryParams.toString();
-  return `${API_BASE_URL}${path}${queryString ? `?${queryString}` : ""}`;
+  return queryString ? `${basePath}?${queryString}` : basePath;
 }
 
 export interface Widget {
@@ -111,6 +70,10 @@ export interface DashboardUpdate {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    if (response.status === 401) {
+      handleUnauthorized();
+    }
+    
     let detail = response.statusText;
     try {
       const body = await response.json();
@@ -131,14 +94,14 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 export async function getDashboards(): Promise<Dashboard[]> {
   const response = await fetch(buildUrl("/v1/dashboard"), {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(API_BASE_URL),
   });
   return handleResponse<Dashboard[]>(response);
 }
 
 export async function getDashboard(id: string): Promise<Dashboard> {
   const response = await fetch(buildUrl(`/v1/dashboard/${id}`), {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(API_BASE_URL),
   });
   return handleResponse<Dashboard>(response);
 }
@@ -146,7 +109,7 @@ export async function getDashboard(id: string): Promise<Dashboard> {
 export async function createDashboard(data: DashboardCreate): Promise<Dashboard> {
   const response = await fetch(buildUrl("/v1/dashboard"), {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders(API_BASE_URL) },
     body: JSON.stringify(data),
   });
   return handleResponse<Dashboard>(response);
@@ -158,7 +121,7 @@ export async function updateDashboard(
 ): Promise<Dashboard> {
   const response = await fetch(buildUrl(`/v1/dashboard/${id}`), {
     method: "PUT",
-    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders(API_BASE_URL) },
     body: JSON.stringify(data),
   });
   return handleResponse<Dashboard>(response);
@@ -167,7 +130,7 @@ export async function updateDashboard(
 export async function deleteDashboard(id: string): Promise<void> {
   const response = await fetch(buildUrl(`/v1/dashboard/${id}`), {
     method: "DELETE",
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(API_BASE_URL),
   });
   return handleResponse<void>(response);
 }
@@ -178,7 +141,7 @@ export async function addWidget(
 ): Promise<Widget> {
   const response = await fetch(buildUrl(`/v1/dashboard/${dashboardId}/widgets`), {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders(API_BASE_URL) },
     body: JSON.stringify(widget),
   });
   return handleResponse<Widget>(response);
@@ -193,7 +156,7 @@ export async function updateWidget(
     buildUrl(`/v1/dashboard/${dashboardId}/widgets/${encodeURIComponent(widgetId)}`),
     {
       method: "PUT",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      headers: { "Content-Type": "application/json", ...getAuthHeaders(API_BASE_URL) },
       body: JSON.stringify(data),
     },
   );
@@ -206,7 +169,7 @@ export async function deleteWidget(
 ): Promise<void> {
   const response = await fetch(
     buildUrl(`/v1/dashboard/${dashboardId}/widgets/${encodeURIComponent(widgetId)}`),
-    { method: "DELETE", headers: getAuthHeaders() },
+    { method: "DELETE", headers: getAuthHeaders(API_BASE_URL) },
   );
   return handleResponse<void>(response);
 }

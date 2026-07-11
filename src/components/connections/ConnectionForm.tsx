@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input, Select, Button, Icon, Label } from "@openbb/ui";
-import type { Connection } from "../../types/connections";
+import type { Connection, ConnectionAuthType } from "../../types/connections";
 
 interface AuthenticationField {
   key: string;
@@ -41,6 +41,9 @@ function ConnectionForm({
   const [url, setUrl] = useState(initialValues?.url || "");
   const [validateWidgets, setValidateWidgets] = useState(
     initialValues?.validateWidgets ? "Yes" : "No",
+  );
+  const [authType, setAuthType] = useState<ConnectionAuthType>(
+    initialValues?.authType || "none",
   );
   const [authentication, setAuthentication] = useState<AuthenticationField[]>(
     initialValues?.authentication?.map((auth, index) => ({
@@ -110,6 +113,7 @@ function ConnectionForm({
         url,
         apiKey: "",
         validateWidgets: validateWidgets === "Yes",
+        authType,
         authentication: authentication.map(removeIdFromAuth),
       });
     }
@@ -123,10 +127,13 @@ function ConnectionForm({
         url,
         apiKey: "",
         validateWidgets: validateWidgets === "Yes",
+        authType,
         authentication: authentication.map(removeIdFromAuth),
       });
     }
   };
+
+  const showAuthenticationFields = authType === "custom";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -165,63 +172,81 @@ function ConnectionForm({
         />
       </div>
 
-      {authentication.map((auth) => (
-        <div key={auth.id} className="flex space-x-2 items-end">
-          <div className="flex-1 space-y-2">
-            <Label>{t("connections.key")}</Label>
-            <Input
-              type="text"
-              value={auth.key}
-              onChange={(value) =>
-                updateAuthenticationField(auth.id, "key", String(value))
-              }
-              placeholder={t("connections.key")}
-            />
-          </div>
-          <div className="flex-1 space-y-2">
-            <Label>{t("connections.value")}</Label>
-            <Input
-              type="text"
-              value={auth.value}
-              onChange={(value) =>
-                updateAuthenticationField(auth.id, "value", String(value))
-              }
-              placeholder={t("connections.value")}
-            />
-          </div>
-          <div className="flex-1 space-y-2">
-            <Label>{t("connections.location")}</Label>
-            <Select
-              value={auth.location}
-              onChange={(value) =>
-                updateAuthenticationField(
-                  auth.id,
-                  "location",
-                  value as "header" | "query",
-                )
-              }
-              options={[
-                { value: "header", label: t("connections.header") },
-                { value: "query", label: t("connections.query") },
-              ]}
-              className="text-gray-900"
-            />
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => removeAuthenticationField(auth.id)}
-            className="text-red-500"
-          >
-            ×
-          </Button>
-        </div>
-      ))}
+      <div className="space-y-2">
+        <Label>{t("connections.authType")}</Label>
+        <Select
+          value={authType}
+          onChange={(value) => setAuthType(value as ConnectionAuthType)}
+          options={[
+            { value: "none", label: t("connections.authTypeNone") },
+            { value: "custom", label: t("connections.authTypeCustom") },
+            { value: "passxyz-jwt", label: t("connections.authTypePassxyz") },
+          ]}
+          className="text-gray-900"
+        />
+      </div>
 
-      <Button variant="link" type="button" onClick={addAuthenticationField}>
-        <Icon name={"plus" as never} size={16} />
-        {t("connections.addAuthentication")}
-      </Button>
+      {showAuthenticationFields && (
+        <>
+          {authentication.map((auth) => (
+            <div key={auth.id} className="flex space-x-2 items-end">
+              <div className="flex-1 space-y-2">
+                <Label>{t("connections.key")}</Label>
+                <Input
+                  type="text"
+                  value={auth.key}
+                  onChange={(value) =>
+                    updateAuthenticationField(auth.id, "key", String(value))
+                  }
+                  placeholder={t("connections.key")}
+                />
+              </div>
+              <div className="flex-1 space-y-2">
+                <Label>{t("connections.value")}</Label>
+                <Input
+                  type="text"
+                  value={auth.value}
+                  onChange={(value) =>
+                    updateAuthenticationField(auth.id, "value", String(value))
+                  }
+                  placeholder={t("connections.value")}
+                />
+              </div>
+              <div className="flex-1 space-y-2">
+                <Label>{t("connections.location")}</Label>
+                <Select
+                  value={auth.location}
+                  onChange={(value) =>
+                    updateAuthenticationField(
+                      auth.id,
+                      "location",
+                      value as "header" | "query",
+                    )
+                  }
+                  options={[
+                    { value: "header", label: t("connections.header") },
+                    { value: "query", label: t("connections.query") },
+                  ]}
+                  className="text-gray-900"
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => removeAuthenticationField(auth.id)}
+                className="text-red-500"
+              >
+                ×
+              </Button>
+            </div>
+          ))}
+
+          <Button variant="link" type="button" onClick={addAuthenticationField}>
+            <Icon name={"plus" as never} size={16} />
+            {t("connections.addAuthentication")}
+          </Button>
+        </>
+      )}
 
       {testResult && (
         <div
