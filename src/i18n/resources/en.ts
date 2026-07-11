@@ -265,7 +265,7 @@ export default {
       english: "English",
       chinese: "中文",
     },
-    version: "v1.15.9", // Replace with the actual version number
+    version: "v2.0.0", // Replace with the actual version number
   },
   mobileNav: {
     menu: "Menu",
@@ -322,13 +322,17 @@ export default {
   connections: {
     title: "Connections",
     subtitle: "Manage your data sources and connections",
-    addConnection: "Add Connection Backend",
+    addConnection: "Add",
     editConnection: "Edit Connection Backend",
     deleteConnection: "Delete Connection Backend",
     name: "Name",
     url: "URL",
     validateWidgets: "Validate Widgets",
     authentication: "Authentication",
+    authType: "Authentication Type",
+    authTypeNone: "None",
+    authTypeCustom: "Custom",
+    authTypePassxyz: "PassXYZ JWT",
     key: "Key",
     value: "Value",
     description: "Description",

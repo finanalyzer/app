@@ -19,6 +19,7 @@ interface NavItem {
   label: string;
   icon: string | React.ReactNode;
   href: string;
+  external?: boolean;
 }
 
 interface DashboardItem {
@@ -43,7 +44,8 @@ const mainNavItems: NavItem[] = [
     id: "passxyz",
     label: "sidebar.main.passxyz",
     icon: <img src={`${import.meta.env.BASE_URL}passxyz.svg`} alt="PassXYZ" className="w-4 h-4 object-contain" />,
-    href: "/vault",
+    href: "/vault/",
+    external: true,
   },
 ];
 
@@ -212,7 +214,10 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
     }
   };
 
-  const isActive = (href: string) => {
+  const isActive = (href: string, external?: boolean) => {
+    if (external) {
+      return false;
+    }
     if (href === "/") {
       return location.pathname === "/" || location.pathname === "/app";
     }
@@ -326,22 +331,42 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
       </div>
 
       <div className="sidebar-nav-main">
-        {mainNavItems.map((item) => (
-          <Link
-            key={item.id}
-            to={item.href}
-            onClick={handleNavClick}
-            className={`sidebar-nav-item ${isActive(item.href) ? "active" : ""}`}
-            aria-current={isActive(item.href) ? "page" : undefined}
-          >
-            {typeof item.icon === "string" ? (
-              <Icon name={item.icon as never} />
-            ) : (
-              item.icon
-            )}
-            <span className="sidebar-nav-text">{t(item.label)}</span>
-          </Link>
-        ))}
+        {mainNavItems.map((item) => {
+          if (item.external) {
+            return (
+              <a
+                key={item.id}
+                href={`${window.location.origin}${item.href}`}
+                onClick={handleNavClick}
+                className={`sidebar-nav-item ${isActive(item.href, item.external) ? "active" : ""}`}
+                aria-current={isActive(item.href, item.external) ? "page" : undefined}
+              >
+                {typeof item.icon === "string" ? (
+                  <Icon name={item.icon as never} />
+                ) : (
+                  item.icon
+                )}
+                <span className="sidebar-nav-text">{t(item.label)}</span>
+              </a>
+            );
+          }
+          return (
+            <Link
+              key={item.id}
+              to={item.href}
+              onClick={handleNavClick}
+              className={`sidebar-nav-item ${isActive(item.href) ? "active" : ""}`}
+              aria-current={isActive(item.href) ? "page" : undefined}
+            >
+              {typeof item.icon === "string" ? (
+                <Icon name={item.icon as never} />
+              ) : (
+                item.icon
+              )}
+              <span className="sidebar-nav-text">{t(item.label)}</span>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="sidebar-section">

@@ -263,7 +263,7 @@ export default {
       english: "English",
       chinese: "中文",
     },
-    version: "v1.15.9", // Replace with the actual version number
+    version: "v2.0.0", // Replace with the actual version number
   },
   mobileNav: {
     menu: "菜单",
@@ -317,13 +317,17 @@ export default {
   connections: {
     title: "连接",
     subtitle: "管理您的数据源和连接",
-    addConnection: "添加连接后端",
+    addConnection: "添加",
     editConnection: "编辑连接后端",
     deleteConnection: "删除连接后端",
     name: "名称",
     url: "URL",
     validateWidgets: "验证小部件",
     authentication: "认证",
+    authType: "认证类型",
+    authTypeNone: "无",
+    authTypeCustom: "自定义",
+    authTypePassxyz: "PassXYZ JWT",
     key: "键",
     value: "值",
     description: "描述",

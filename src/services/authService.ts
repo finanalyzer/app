@@ -19,32 +19,40 @@ export function findConnectionByUrl(url: string): Connection | undefined {
 
 export function getConnectionAuthType(url: string): ConnectionAuthType {
   const connection = findConnectionByUrl(url);
-  return connection?.authType ?? 'none';
+  if (connection) {
+    return connection.authType;
+  }
+  
+  if (url.startsWith('/') && getPassxyzToken()) {
+    return 'passxyz-jwt';
+  }
+  
+  return 'none';
 }
 
 export function getAuthHeaders(url: string): HeadersInit {
   const headers: HeadersInit = {};
   const connection = findConnectionByUrl(url);
   
-  if (!connection) {
-    return headers;
-  }
-  
-  switch (connection.authType) {
-    case 'passxyz-jwt':
-      const token = getPassxyzToken();
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      break;
-      
-    case 'custom':
-      connection.authentication.forEach((auth: { key: string; value: string; location: 'header' | 'query' }) => {
-        if (auth.location === 'header') {
-          headers[auth.key] = auth.value;
+  if (connection) {
+    switch (connection.authType) {
+      case 'passxyz-jwt':
+        const token = getPassxyzToken();
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
         }
-      });
-      break;
+        break;
+        
+      case 'custom':
+        connection.authentication.forEach((auth: { key: string; value: string; location: 'header' | 'query' }) => {
+          if (auth.location === 'header') {
+            headers[auth.key] = auth.value;
+          }
+        });
+        break;
+    }
+  } else if (url.startsWith('/') && getPassxyzToken()) {
+    headers['Authorization'] = `Bearer ${getPassxyzToken()!}`;
   }
   
   return headers;
@@ -68,6 +76,10 @@ export function getAuthQueryParams(url: string): URLSearchParams {
 export function isAuthenticated(): boolean {
   const connections = connectionService.getConnections();
   
+  if (connections.length === 0) {
+    return !!getPassxyzToken();
+  }
+  
   for (const conn of connections) {
     switch (conn.authType) {
       case 'passxyz-jwt':
@@ -89,5 +101,5 @@ export function isAuthenticated(): boolean {
 export function handleUnauthorized(): void {
   localStorage.removeItem('passxyz-token');
   localStorage.removeItem('passxyz-user');
-  window.location.href = '/vault/#/login';
+  window.location.href = `${window.location.origin}/vault/#/login`;
 }
