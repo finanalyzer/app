@@ -98,6 +98,23 @@ export class LocalStorageConnectionStorage implements IConnectionStorage {
     }
   }
 
+  async createConnectionAsync(
+    connection: Omit<
+      Connection,
+      'id' | 'createdAt' | 'updatedAt' | 'status' | 'metrics' | 'lastActivity'
+    >,
+  ): Promise<Connection> {
+    return this.createConnection(connection);
+  }
+
+  async updateConnectionAsync(id: string, updates: Partial<Connection>): Promise<Connection | undefined> {
+    return this.updateConnection(id, updates);
+  }
+
+  async deleteConnectionAsync(id: string): Promise<boolean> {
+    return this.deleteConnection(id);
+  }
+
   getStorageType(): 'localstorage' | 'keepass' {
     return 'localstorage';
   }

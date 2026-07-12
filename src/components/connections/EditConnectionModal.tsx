@@ -77,13 +77,17 @@ function EditConnectionModal({
       "id" | "createdAt" | "updatedAt" | "status" | "metrics" | "lastActivity"
     >,
   ) => {
-    connectionService.updateConnection(connection.id, values);
-    
-    // Automatically test the connection after update
-    await connectionService.testConnection(connection.id);
-    
-    onConnectionUpdated();
-    onClose();
+    try {
+      await connectionService.updateConnectionAsync(connection.id, values);
+      
+      // Automatically test the connection after update
+      await connectionService.testConnection(connection.id);
+      
+      onConnectionUpdated();
+      onClose();
+    } catch (err) {
+      console.error("Error updating connection:", err);
+    }
   };
 
   return (

@@ -18,6 +18,10 @@ function getStorage() {
 }
 
 export const connectionService = {
+  async initialize(): Promise<void> {
+    await ConnectionStorageFactory.getInstanceAsync();
+  },
+
   getConnections(): Connection[] {
     try {
       return getStorage().getConnections();
@@ -33,6 +37,44 @@ export const connectionService = {
     } catch (error) {
       console.error("Error getting connection:", error);
       return undefined;
+    }
+  },
+
+  async createConnectionAsync(
+    connection: Omit<
+      Connection,
+      "id" | "createdAt" | "updatedAt" | "status" | "metrics" | "lastActivity"
+    >,
+  ): Promise<Connection> {
+    try {
+      const storage = await ConnectionStorageFactory.getInstanceAsync();
+      return await storage.createConnectionAsync(connection);
+    } catch (error) {
+      console.error("Error creating connection:", error);
+      throw error;
+    }
+  },
+
+  async updateConnectionAsync(
+    id: string,
+    updates: Partial<Connection>,
+  ): Promise<Connection | undefined> {
+    try {
+      const storage = await ConnectionStorageFactory.getInstanceAsync();
+      return await storage.updateConnectionAsync(id, updates);
+    } catch (error) {
+      console.error("Error updating connection:", error);
+      return undefined;
+    }
+  },
+
+  async deleteConnectionAsync(id: string): Promise<boolean> {
+    try {
+      const storage = await ConnectionStorageFactory.getInstanceAsync();
+      return await storage.deleteConnectionAsync(id);
+    } catch (error) {
+      console.error("Error deleting connection:", error);
+      return false;
     }
   },
 
@@ -75,9 +117,9 @@ export const connectionService = {
     return getStorage().getStorageType();
   },
 
-  updateConnectionStatus(id: string, status: Connection["status"]): void {
+  async updateConnectionStatus(id: string, status: Connection["status"]): Promise<void> {
     try {
-      this.updateConnection(id, {
+      await this.updateConnectionAsync(id, {
         status,
         lastActivity: new Date().toISOString(),
       });
@@ -86,14 +128,14 @@ export const connectionService = {
     }
   },
 
-  updateConnectionMetrics(
+  async updateConnectionMetrics(
     id: string,
     metrics: Partial<Connection["metrics"]>,
-  ): void {
+  ): Promise<void> {
     try {
       const connection = this.getConnection(id);
       if (connection) {
-        this.updateConnection(id, {
+        await this.updateConnectionAsync(id, {
           metrics: {
             ...connection.metrics,
             ...metrics,
@@ -115,7 +157,7 @@ export const connectionService = {
         return { connected: false, message: "Connection not found" };
       }
 
-      this.updateConnectionStatus(id, "testing");
+      await this.updateConnectionStatus(id, "testing");
 
       const result = await this.testConnectionWithDetails({
         url: connection.url,
@@ -125,16 +167,16 @@ export const connectionService = {
       });
 
       if (result.connected) {
-        this.updateConnectionStatus(id, "connected");
-        this.updateConnectionMetrics(id, { widgets: result.widgetsCount || 0 });
+        await this.updateConnectionStatus(id, "connected");
+        await this.updateConnectionMetrics(id, { widgets: result.widgetsCount || 0 });
       } else {
-        this.updateConnectionStatus(id, "error");
+        await this.updateConnectionStatus(id, "error");
       }
 
       return result;
     } catch (error) {
       console.error("Error testing connection:", error);
-      this.updateConnectionStatus(id, "error");
+      await this.updateConnectionStatus(id, "error");
       return {
         connected: false,
         message: error instanceof Error ? error.message : "Unknown error",
@@ -302,7 +344,7 @@ export const connectionService = {
         return undefined;
       }
 
-      this.updateConnectionStatus(id, "testing");
+      await this.updateConnectionStatus(id, "testing");
 
       const headers: HeadersInit = {};
       const params = new URLSearchParams();
@@ -374,16 +416,16 @@ export const connectionService = {
       );
 
       if (hasValidEndpoint) {
-        this.updateConnectionStatus(id, "connected");
-        this.updateConnectionMetrics(id, metrics);
+        await this.updateConnectionStatus(id, "connected");
+        await this.updateConnectionMetrics(id, metrics);
       } else {
-        this.updateConnectionStatus(id, "error");
+        await this.updateConnectionStatus(id, "error");
       }
 
       return this.getConnection(id);
     } catch (error) {
       console.error("Error in refreshConnection:", error);
-      this.updateConnectionStatus(id, "error");
+      await this.updateConnectionStatus(id, "error");
       return undefined;
     }
   },

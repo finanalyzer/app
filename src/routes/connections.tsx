@@ -36,6 +36,7 @@ function ConnectionsPage() {
 
   const loadConnections = () => {
     const loadedConnections = connectionService.getConnections();
+    console.log(`[ConnectionsPage] loadConnections() called, ${loadedConnections.length} connections loaded`);
     setConnections(loadedConnections);
   };
 
@@ -48,6 +49,28 @@ function ConnectionsPage() {
 
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const initAndLoad = async () => {
+      try {
+        await connectionService.initialize();
+        if (isMounted) {
+          console.log("[ConnectionsPage] Connection service initialized, loading connections");
+          loadConnections();
+        }
+      } catch (error) {
+        console.error("[ConnectionsPage] Failed to initialize connection service:", error);
+      }
+    };
+
+    initAndLoad();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleSearch = (term: string) => {
@@ -89,12 +112,16 @@ function ConnectionsPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleConnectionDeleted = () => {
+  const handleConnectionDeleted = async () => {
     if (selectedConnection) {
-      connectionService.deleteConnection(selectedConnection.id);
-      loadConnections();
-      setIsDeleteModalOpen(false);
-      setSelectedConnection(null);
+      try {
+        await connectionService.deleteConnectionAsync(selectedConnection.id);
+        loadConnections();
+        setIsDeleteModalOpen(false);
+        setSelectedConnection(null);
+      } catch (err) {
+        console.error("Error deleting connection:", err);
+      }
     }
   };
 

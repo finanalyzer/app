@@ -437,7 +437,7 @@ export class CommandHandler {
         location: (header.location === 'headers' ? 'header' : header.location) as 'header' | 'query',
       })) || [];
 
-      const connection = connectionService.createConnection({
+      const connection = await connectionService.createConnectionAsync({
         name,
         url,
         apiKey: '',
@@ -494,7 +494,7 @@ export class CommandHandler {
         return { success: false, error: 'At least one update field is required (name, url, or endpoint_headers)' };
       }
 
-      const connection = connectionService.updateConnection(backendId, updates as any);
+      const connection = await connectionService.updateConnectionAsync(backendId, updates as any);
 
       if (!connection) {
         return { success: false, error: `Backend not found: ${backendId}` };
@@ -554,7 +554,7 @@ export class CommandHandler {
         return { success: false, error: 'backend_id is required' };
       }
 
-      const deleted = connectionService.deleteConnection(backendId);
+      const deleted = await connectionService.deleteConnectionAsync(backendId);
 
       if (!deleted) {
         return { success: false, error: `Backend not found: ${backendId}` };

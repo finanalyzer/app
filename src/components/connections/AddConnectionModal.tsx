@@ -77,15 +77,19 @@ function AddConnectionModal({
       "id" | "createdAt" | "updatedAt" | "status" | "metrics" | "lastActivity"
     >,
   ) => {
-    const newConnection = connectionService.createConnection(values);
-    
-    // Automatically test the connection after creation
-    if (newConnection) {
-      await connectionService.testConnection(newConnection.id);
+    try {
+      const newConnection = await connectionService.createConnectionAsync(values);
+      
+      // Automatically test the connection after creation
+      if (newConnection) {
+        await connectionService.testConnection(newConnection.id);
+      }
+      
+      onConnectionAdded();
+      onClose();
+    } catch (err) {
+      console.error("Error creating connection:", err);
     }
-    
-    onConnectionAdded();
-    onClose();
   };
 
   return (
