@@ -12,6 +12,7 @@ import { setActiveDashboardId } from "../../services/dashboardSession";
 import { McpCompanionDialog } from "../settings/McpCompanionDialog";
 import { generateUUID } from "../../utils/uuid";
 import { companionBridge } from "../../services/mcp/companionBridge";
+import { useAuth } from "../../hooks/useAuth";
 import "./Sidebar.css";
 
 interface NavItem {
@@ -79,6 +80,7 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
   const [renameValue, setRenameValue] = useState("");
   const [isCompanionConnected, setIsCompanionConnected] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const { user, isAuthenticated, logout } = useAuth();
 
   useEffect(() => {
     fetchDashboards()
@@ -284,10 +286,20 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
             </button>
             {settingsOpen && (
               <div className="settings-menu">
-                <div className="settings-menu-item">
-                  <Icon name={"user" as never} />
-                  <span>{t("sidebar.profile")}</span>
-                </div>
+                {isAuthenticated && user && (
+                  <>
+                    <div className="settings-menu-profile">
+                      <span className="settings-menu-avatar">
+                        {user.username.charAt(0).toUpperCase()}
+                      </span>
+                      <div className="settings-menu-profile-info">
+                        <span className="settings-menu-profile-name">{user.username}</span>
+                        <span className="settings-menu-profile-email">{user.email}</span>
+                      </div>
+                    </div>
+                    <div className="settings-menu-divider" />
+                  </>
+                )}
                 <Link to="/app/settings" className="settings-menu-item" onClick={handleNavClick}>
                   <Icon name={"settings" as never} />
                   <span>{t("sidebar.settings")}</span>
@@ -303,6 +315,24 @@ export function Sidebar({ isMobile = false, onClose }: SidebarProps) {
                   </svg>
                   <span>{t("mcp.companion")}</span>
                 </button>
+                {isAuthenticated && (
+                  <>
+                    <div className="settings-menu-divider" />
+                    <button
+                      type="button"
+                      className="settings-menu-item settings-menu-logout"
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        logout();
+                      }}
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-5-4 5-5-5-5m4 5H3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>Log out</span>
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>

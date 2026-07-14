@@ -25,7 +25,7 @@ import i18n from "./i18n";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
-Icon.defaultUrl = "/spritemap.svg";
+Icon.defaultUrl = `${import.meta.env.BASE_URL}spritemap.svg`;
 
 console.log("=== ROUTE TREE:", routeTree);
 

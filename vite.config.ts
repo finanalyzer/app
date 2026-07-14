@@ -5,45 +5,46 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 import fs from "node:fs";
 import path from "node:path";
 
-const env = loadEnv("", process.cwd(), "");
-
-function getApiHostnames(): string[] {
-  const hosts: string[] = [];
-  const apiUrl = env.VITE_API_BASE_URL;
-  if (apiUrl) {
-    try {
-      const url = new URL(apiUrl);
-      hosts.push(url.hostname);
-    } catch { /* ignore invalid URL */ }
-  }
-  // Also allow deployment hosts (Cloudflare Pages, etc.)
-  if (env.VITE_APP_HOST) {
-    hosts.push(...env.VITE_APP_HOST.split(",").map(h => h.trim()).filter(Boolean));
-  }
-  return hosts;
-}
-
 function existsSync(relativePath: string): boolean {
   return fs.existsSync(path.resolve(process.cwd(), relativePath));
 }
 
-const staticCopyTargets: { src: string; dest: string }[] = [];
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
 
-if (existsSync("node_modules/@openbb/ui/dist/assets")) {
-  staticCopyTargets.push({
-    src: "node_modules/@openbb/ui/dist/assets/*",
-    dest: "",
-  });
-}
+  function getApiHostnames(): string[] {
+    const hosts: string[] = [];
+    const apiUrl = env.VITE_API_BASE_URL;
+    if (apiUrl) {
+      try {
+        const url = new URL(apiUrl);
+        hosts.push(url.hostname);
+      } catch { /* ignore invalid URL */ }
+    }
+    if (env.VITE_APP_HOST) {
+      hosts.push(...env.VITE_APP_HOST.split(",").map(h => h.trim()).filter(Boolean));
+    }
+    return hosts;
+  }
 
-if (existsSync("../docs")) {
-  staticCopyTargets.push({
-    src: "../docs/*",
-    dest: "docs",
-  });
-}
+  const staticCopyTargets: { src: string; dest: string }[] = [];
 
-export default defineConfig({
+  if (existsSync("node_modules/@openbb/ui/dist/assets")) {
+    staticCopyTargets.push({
+      src: "node_modules/@openbb/ui/dist/assets/*",
+      dest: "",
+    });
+  }
+
+  if (existsSync("../docs")) {
+    staticCopyTargets.push({
+      src: "../docs/*",
+      dest: "docs",
+    });
+  }
+
+  return {
+    base: env.VITE_APP_BASE || "/",
   plugins: [
     tanstackRouter({
       target: "react",
@@ -60,10 +61,15 @@ export default defineConfig({
       : []),
   ],
   server: {
-    port: 5173,
+    port: 5174,
     open: false,
     allowedHosts: getApiHostnames(),
     proxy: {
+      "/api": {
+        target: "http://localhost:5182",
+        changeOrigin: true,
+        secure: false,
+      },
       "/v1": {
         target: "http://localhost:8001",
         changeOrigin: true,
@@ -84,7 +90,7 @@ export default defineConfig({
           target: env.VITE_PROXY_TARGET_URL,
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(new RegExp(`^${env.VITE_PROXY_PATH}`), ""),
+          rewrite: (path: string) => path.replace(new RegExp(`^${env.VITE_PROXY_PATH}`), ""),
         },
       } : {}),
     },
@@ -167,4 +173,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });
