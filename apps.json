@@ -1,0 +1,204 @@
+[
+    {
+        "name": "持仓管理",
+        "img": "https://x0.ifengimg.com/ucms/2025_16/A25F85EA69929D10BE12190E20264C43657282E1_size230_w1013_h584.jpg",
+        "img_dark": "",
+        "img_light": "",
+        "description": "A股数据。",
+        "allowCustomization": true,
+        "tabs": {
+            "cn_holdings": {
+                "id": "cn_holdings",
+                "name": "持股",
+                "layout": [
+                    {
+                        "i": "portfolio/stocks",
+                        "x": 0,
+                        "y": 2,
+                        "w": 40,
+                        "h": 14,
+                        "state": {
+                            "tableConfig": {
+                                "columnsDefs": [
+                                    {
+                                        "field": "symbol",
+                                        "headerName": "股票代码",
+                                        "cellDataType": "text",
+                                        "width": 120,
+                                        "pinned": "left",
+                                        "renderFn": "cellOnClick",
+                                        "renderFnParams": {
+                                            "actionType": "groupBy",
+                                            "groupBy": {
+                                                "paramName": "symbol"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "field": "name",
+                                        "headerName": "股票名称",
+                                        "cellDataType": "text",
+                                        "width": 150
+                                    },
+                                    {
+                                        "field": "quantity",
+                                        "headerName": "持仓数量",
+                                        "cellDataType": "number",
+                                        "width": 120
+                                    },
+                                    {
+                                        "field": "avg_cost",
+                                        "headerName": "平均成本",
+                                        "cellDataType": "number",
+                                        "width": 120
+                                    },
+                                    {
+                                        "field": "current_price",
+                                        "headerName": "当前价格",
+                                        "cellDataType": "number",
+                                        "width": 120
+                                    },
+                                    {
+                                        "field": "total_value",
+                                        "headerName": "市值",
+                                        "cellDataType": "number",
+                                        "width": 120
+                                    },
+                                    {
+                                        "field": "profit_loss",
+                                        "headerName": "浮动盈亏",
+                                        "cellDataType": "number",
+                                        "width": 120
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "i": "portfolio/transactions",
+                        "x": 0,
+                        "y": 16,
+                        "w": 40,
+                        "h": 14,
+                        "state": {
+                            "tableConfig": {
+                                "columnsDefs": [
+                                    {
+                                        "field": "date",
+                                        "headerName": "日期",
+                                        "cellDataType": "text",
+                                        "width": 120,
+                                        "pinned": "left"
+                                    },
+                                    {
+                                        "field": "symbol",
+                                        "headerName": "股票代码",
+                                        "cellDataType": "text",
+                                        "width": 120
+                                    },
+                                    {
+                                        "field": "transaction_type",
+                                        "headerName": "交易类型",
+                                        "cellDataType": "text",
+                                        "width": 100
+                                    },
+                                    {
+                                        "field": "price",
+                                        "headerName": "成交价格",
+                                        "cellDataType": "number",
+                                        "width": 120
+                                    },
+                                    {
+                                        "field": "quantity",
+                                        "headerName": "成交数量",
+                                        "cellDataType": "number",
+                                        "width": 120
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            },
+            "cn_overview": {
+                "id": "cn_overview",
+                "name": "简况",
+                "layout": [
+                    {
+                        "i": "portfolio/key_metrics",
+                        "x": 0,
+                        "y": 2,
+                        "w": 13,
+                        "h": 21,
+                        "state": {
+                            "chartView": {
+                                "enabled": false,
+                                "chartType": "line"
+                            },
+                            "columnState": {
+                                "default": {
+                                    "columnOrder": {
+                                        "orderedColIds": [
+                                            "fact",
+                                            "value"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "i": "portfolio/news",
+                        "x": 13,
+                        "y": 2,
+                        "w": 27,
+                        "h": 21,
+                        "state": {
+                            "params": {
+                                "limit": "20"
+                            },
+                            "chartView": {
+                                "enabled": false,
+                                "chartType": "line"
+                            },
+                            "columnState": {
+                                "default": {
+                                    "columnPinning": {
+                                        "leftColIds": [
+                                            "date"
+                                        ],
+                                        "rightColIds": []
+                                    },
+                                    "columnOrder": {
+                                        "orderedColIds": [
+                                            "title",
+                                            "author",
+                                            "date",
+                                            "sentiment",
+                                            "url",
+                                            "source"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "groups": [
+            {
+                "name": "股票选择组",
+                "type": "endpointParam",
+                "paramName": "symbol",
+                "defaultValue": "600325",
+                "widgetIds": [
+                    "portfolio/stocks",
+                    "portfolio/transactions",
+                    "portfolio/key_metrics",
+                    "portfolio/news"
+                ]
+            }
+        ]
+    }
+]

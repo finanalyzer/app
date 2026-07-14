@@ -1,0 +1,69 @@
+{
+  "id": "eastmoney/stock-vote",
+  "name": "Stock Vote (Eastmoney)",
+  "description": "Get the stock vote data from Eastmoney for a given stock code (e.g., sh600028). Returns fields like TapeZ, TapeD, TapeType from the /newapi/getstockvote endpoint.",
+  "type": "table",
+  "category": "Equity",
+  "subCategory": "Market Data",
+  "endpoint": "/newapi/getstockvote",
+  "gridData": {
+    "w": 40,
+    "h": 8
+  },
+  "data": {
+    "dataKey": "Data",
+    "table": {
+      "enableCharts": false,
+      "showAll": true,
+      "columnsDefs": [
+        {
+          "field": "TapeZ",
+          "headerName": "Tape Z",
+          "cellDataType": "number",
+          "formatterFn": "int",
+          "chartDataType": "series"
+        },
+        {
+          "field": "TapeD",
+          "headerName": "Tape D",
+          "cellDataType": "number",
+          "formatterFn": "int",
+          "chartDataType": "series"
+        },
+        {
+          "field": "TapeType",
+          "headerName": "Tape Type",
+          "cellDataType": "number",
+          "formatterFn": "int",
+          "chartDataType": "series"
+        },
+        {
+          "field": "Date",
+          "headerName": "Date",
+          "cellDataType": "text",
+          "chartDataType": "category"
+        }
+      ]
+    }
+  },
+  "params": [
+    {
+      "paramName": "code",
+      "type": "text",
+      "label": "Stock Code",
+      "description": "Eastmoney stock code, e.g. sh600028",
+      "value": "sh600028",
+      "show": true
+    }
+  ],
+  "source": [
+    "Eastmoney"
+  ],
+  "refetchInterval": 300000,
+  "staleTime": 60000,
+  "connectionId": "664434df-0097-4fdc-9b11-0615ccd8120f",
+  "connectionName": "openbb-app",
+  "connectionUrl": "/eastmoney",
+  "connectionStatus": "connected",
+  "connectionAuthentication": []
+}

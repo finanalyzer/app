@@ -1,0 +1,23 @@
+{
+  "name": "Finanalyzer",
+  "short_name": "Finanalyzer",
+  "description": "投资组合管理平台",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0070f3",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "orientation": "portrait",
+  "categories": ["finance", "productivity", "business"],
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "scope": "/"
+}
